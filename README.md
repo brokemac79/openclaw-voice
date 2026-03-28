@@ -43,10 +43,10 @@ Node requirement: `>=20`.
    cp .env.example .env
    ```
 
-3. Install Python dependencies for local faster-whisper:
+3. Complete the local faster-whisper Python setup:
 
    ```bash
-   python3 -m pip install faster-whisper
+   # See the "faster-whisper Python setup (beginner-friendly)" section below.
    ```
 
 4. Fill required `.env` values:
@@ -61,6 +61,146 @@ Node requirement: `>=20`.
    ```
 
 6. Open `http://localhost:8787` and use the web client.
+
+## faster-whisper Python setup (beginner-friendly)
+
+If you have never installed Python tooling before, follow these steps exactly on the same machine that runs the Node server.
+
+### 1) Install Python 3 and pip
+
+- Python download page: <https://www.python.org/downloads/>
+- pip installation/upgrade docs: <https://pip.pypa.io/en/stable/installation/>
+
+Verify both commands work:
+
+```bash
+python3 --version
+python3 -m pip --version
+```
+
+If `python3 -m pip --version` fails, install pip first, then re-run the check.
+
+### 2) Create and activate a virtual environment (recommended)
+
+From the project root:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
+```
+
+Why: this keeps Python packages for this project isolated from system-wide packages.
+
+### 3) Install ffmpeg (required for many audio files)
+
+`faster-whisper` relies on ffmpeg for decoding common input formats.
+
+- macOS (Homebrew): `brew install ffmpeg`
+- Ubuntu/Debian: `sudo apt-get update && sudo apt-get install -y ffmpeg`
+- Fedora/RHEL: `sudo dnf install -y ffmpeg`
+- Windows (Chocolatey): `choco install ffmpeg -y`
+
+Verify it is available:
+
+```bash
+ffmpeg -version
+```
+
+### 4) Install faster-whisper
+
+```bash
+python3 -m pip install faster-whisper
+```
+
+### 5) Expect model download on first transcription
+
+The first transcription downloads the selected model and caches it on disk.
+
+- `tiny.en`: roughly 75 MB
+- `base.en`: roughly 140 MB (default)
+- `small.en`: roughly 460 MB
+
+The first run can take longer depending on your network speed.
+
+### 6) Recommended CPU-only defaults
+
+For most CPU-only machines, start with:
+
+```env
+FASTER_WHISPER_MODEL=base.en
+FASTER_WHISPER_DEVICE=cpu
+FASTER_WHISPER_COMPUTE_TYPE=int8
+```
+
+If your machine is very resource-constrained, try `FASTER_WHISPER_MODEL=tiny.en` for faster/cheaper transcription with lower accuracy.
+
+### 7) Run a standalone smoke test
+
+If you do not already have `test.wav`, create a short sample file:
+
+```bash
+ffmpeg -f lavfi -i "anullsrc=r=16000:cl=mono" -t 2 test.wav
+```
+
+Then run:
+
+```bash
+python3 scripts/faster_whisper_transcribe.py --audio-path test.wav --model base.en
+```
+
+Expected result: JSON printed to stdout (with `text`, `language`, and `duration`) and no Python traceback.
+
+## Desktop client prerequisites
+
+Before running `npm run desktop:client`, confirm these requirements.
+
+Important: the desktop client is a Node.js terminal CLI process. It is not a packaged desktop app (for example Electron).
+
+### Platform support
+
+- macOS: supported for wake word, hotkey, and manual modes.
+- Linux: supported for wake word and manual modes. Global hotkeys require a desktop session with system-wide keyboard capture permissions.
+- Windows: supported for wake word, hotkey, and manual modes in a normal desktop session.
+- Headless/server-only sessions: not recommended for hotkeys because there is no active desktop keyboard session to capture.
+
+### Install `sox` for recording (required)
+
+`VOICE_CLIENT_RECORD_COMMAND` defaults to a `sox` command, so `sox` must be installed on the machine that runs the desktop client.
+
+- macOS (Homebrew): `brew install sox`
+- Ubuntu/Debian: `sudo apt-get update && sudo apt-get install -y sox libsox-fmt-all`
+- Fedora/RHEL: `sudo dnf install -y sox`
+- Windows (Chocolatey): `choco install sox.portable -y`
+
+### Local playback command examples (optional)
+
+Set `VOICE_CLIENT_PLAY_COMMAND` only if you want the desktop machine to play generated reply audio locally after each turn.
+
+- macOS: `VOICE_CLIENT_PLAY_COMMAND=afplay "{output}"`
+- Linux: `VOICE_CLIENT_PLAY_COMMAND=mpg123 "{output}"`
+- Windows: `VOICE_CLIENT_PLAY_COMMAND=powershell -NoProfile -Command "Start-Process '{output}'"`
+
+Tip: the reply file is written as `.mp3`, so pick a playback command that supports MP3 on your machine.
+
+### Porcupine prerequisites (wake word)
+
+Wake word mode requires Picovoice setup in addition to npm dependencies.
+
+1. Create a Picovoice account at <https://console.picovoice.ai/>.
+2. Generate an AccessKey in the Picovoice console and set `PORCUPINE_ACCESS_KEY`.
+3. Create or select your wake keyword in Picovoice and download the `.ppn` keyword file for your target platform.
+4. Set `VOICE_CLIENT_PORCUPINE_KEYWORD_PATH` to the absolute path of that `.ppn` file.
+5. Optional: set `VOICE_CLIENT_PORCUPINE_MODEL_PATH` when using a non-default Porcupine model.
+
+### Linux hotkey caveat (Wayland vs X11)
+
+Global hotkey support depends on whether your desktop environment allows global key capture:
+
+- X11 sessions usually work with the default hotkey listener.
+- Wayland sessions may block global key capture by design, depending on compositor and policy.
+
+If hotkey setup fails on Linux, keep wake word enabled or set `VOICE_CLIENT_WAKE_MODE=manual` as a fallback.
 
 ## Desktop client (persistent process)
 

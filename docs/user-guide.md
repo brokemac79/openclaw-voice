@@ -98,6 +98,8 @@ Most people can skip this section. It is for the person preparing the service or
 
 These settings control local speech transcription:
 
+For a full beginner setup walkthrough (Python + pip + ffmpeg + smoke test), see `README.md` in the section `faster-whisper Python setup (beginner-friendly)`.
+
 - `FASTER_WHISPER_PYTHON_BIN`: which Python command should run the transcription helper, usually `python3`
 - `FASTER_WHISPER_MODEL`: which speech model to use, such as `base.en`
 - `FASTER_WHISPER_LANGUAGE`: language hint, such as `en`
