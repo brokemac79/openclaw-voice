@@ -26,6 +26,17 @@ const edgeVoice = process.env.EDGE_TTS_VOICE || "en-US-AndrewNeural";
 const app = express();
 const upload = multer({ limits: { fileSize: 15 * 1024 * 1024 } });
 
+const AUDIO_MIME_BY_EXTENSION = {
+  webm: "audio/webm",
+  mp4: "audio/mp4",
+  m4a: "audio/mp4",
+  aac: "audio/aac",
+  ogg: "audio/ogg",
+  oga: "audio/ogg",
+  wav: "audio/wav",
+  mp3: "audio/mpeg"
+};
+
 app.disable("x-powered-by");
 app.use(express.json({ limit: "2mb" }));
 
@@ -33,6 +44,19 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "..", "public");
 
 app.use(express.static(publicDir));
+
+function resolveAudioContentType(contentType, filename) {
+  if (typeof contentType === "string" && contentType.toLowerCase().startsWith("audio/")) {
+    return contentType;
+  }
+
+  const extension = path.extname(filename || "").replace(".", "").toLowerCase();
+  if (extension && AUDIO_MIME_BY_EXTENSION[extension]) {
+    return AUDIO_MIME_BY_EXTENSION[extension];
+  }
+
+  return "application/octet-stream";
+}
 
 function requireBearer(req, res, next) {
   const header = req.headers.authorization;
@@ -52,7 +76,7 @@ function requireBearer(req, res, next) {
 
 async function transcribeAudio(buffer, filename, contentType) {
   const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "voice-"));
-  const tmpPath = path.join(tmpDir, filename || "recording.webm");
+  const tmpPath = path.join(tmpDir, filename || "recording.bin");
 
   try {
     await fs.promises.writeFile(tmpPath, buffer);
@@ -152,11 +176,9 @@ app.post("/api/voice/turn", requireBearer, upload.single("audio"), async (req, r
       return;
     }
 
-    const transcribedText = await transcribeAudio(
-      req.file.buffer,
-      req.file.originalname || "recording.webm",
-      req.file.mimetype || "audio/webm"
-    );
+    const uploadFilename = req.file.originalname || "recording.bin";
+    const uploadMimeType = resolveAudioContentType(req.file.mimetype, uploadFilename);
+    const transcribedText = await transcribeAudio(req.file.buffer, uploadFilename, uploadMimeType);
 
     if (!transcribedText) {
       res.status(422).json({ error: "Unable to transcribe audio" });

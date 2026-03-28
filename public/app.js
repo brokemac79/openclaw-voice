@@ -35,6 +35,12 @@ const RECORDER_FORMATS = [
   { mimeType: "audio/aac", extension: "aac" }
 ];
 
+function fallbackFormat() {
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isSafari = userAgent.includes("safari") && !userAgent.includes("chrome") && !userAgent.includes("android");
+  return isSafari ? { mimeType: "", extension: "m4a" } : { mimeType: "", extension: "webm" };
+}
+
 function setStatus(message, state = "default") {
   statusEl.textContent = message;
   statusEl.classList.remove("error", "ok");
@@ -190,7 +196,7 @@ async function ensureMic() {
 
 function pickRecordingFormat() {
   if (!window.MediaRecorder?.isTypeSupported) {
-    return { mimeType: "", extension: "webm" };
+    return fallbackFormat();
   }
 
   const supported = RECORDER_FORMATS.find((format) => window.MediaRecorder.isTypeSupported(format.mimeType));
@@ -198,7 +204,7 @@ function pickRecordingFormat() {
     return supported;
   }
 
-  return { mimeType: "", extension: "webm" };
+  return fallbackFormat();
 }
 
 function extensionFromMimeType(mimeType, fallbackExtension) {
@@ -293,7 +299,7 @@ function startRecording() {
     mediaState.isRecording = false;
     recordButton.classList.remove("is-recording");
 
-    const recordedMimeType = format.mimeType || mediaState.recorder.mimeType || "audio/webm";
+    const recordedMimeType = mediaState.recorder.mimeType || format.mimeType || "application/octet-stream";
     const blob = new Blob(mediaState.chunks, { type: recordedMimeType });
     const fileExtension = extensionFromMimeType(recordedMimeType, format.extension);
     try {
