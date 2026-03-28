@@ -62,6 +62,57 @@ Node requirement: `>=20`.
 
 6. Open `http://localhost:8787` and use the web client.
 
+## Desktop client prerequisites
+
+Before running `npm run desktop:client`, confirm these requirements.
+
+Important: the desktop client is a Node.js terminal CLI process. It is not a packaged desktop app (for example Electron).
+
+### Platform support
+
+- macOS: supported for wake word, hotkey, and manual modes.
+- Linux: supported for wake word and manual modes. Global hotkeys require a desktop session with system-wide keyboard capture permissions.
+- Windows: supported for wake word, hotkey, and manual modes in a normal desktop session.
+- Headless/server-only sessions: not recommended for hotkeys because there is no active desktop keyboard session to capture.
+
+### Install `sox` for recording (required)
+
+`VOICE_CLIENT_RECORD_COMMAND` defaults to a `sox` command, so `sox` must be installed on the machine that runs the desktop client.
+
+- macOS (Homebrew): `brew install sox`
+- Ubuntu/Debian: `sudo apt-get update && sudo apt-get install -y sox libsox-fmt-all`
+- Fedora/RHEL: `sudo dnf install -y sox`
+- Windows (Chocolatey): `choco install sox.portable -y`
+
+### Local playback command examples (optional)
+
+Set `VOICE_CLIENT_PLAY_COMMAND` only if you want the desktop machine to play generated reply audio locally after each turn.
+
+- macOS: `VOICE_CLIENT_PLAY_COMMAND=afplay "{output}"`
+- Linux: `VOICE_CLIENT_PLAY_COMMAND=mpg123 "{output}"`
+- Windows: `VOICE_CLIENT_PLAY_COMMAND=powershell -NoProfile -Command "Start-Process '{output}'"`
+
+Tip: the reply file is written as `.mp3`, so pick a playback command that supports MP3 on your machine.
+
+### Porcupine prerequisites (wake word)
+
+Wake word mode requires Picovoice setup in addition to npm dependencies.
+
+1. Create a Picovoice account at <https://console.picovoice.ai/>.
+2. Generate an AccessKey in the Picovoice console and set `PORCUPINE_ACCESS_KEY`.
+3. Create or select your wake keyword in Picovoice and download the `.ppn` keyword file for your target platform.
+4. Set `VOICE_CLIENT_PORCUPINE_KEYWORD_PATH` to the absolute path of that `.ppn` file.
+5. Optional: set `VOICE_CLIENT_PORCUPINE_MODEL_PATH` when using a non-default Porcupine model.
+
+### Linux hotkey caveat (Wayland vs X11)
+
+Global hotkey support depends on whether your desktop environment allows global key capture:
+
+- X11 sessions usually work with the default hotkey listener.
+- Wayland sessions may block global key capture by design, depending on compositor and policy.
+
+If hotkey setup fails on Linux, keep wake word enabled or set `VOICE_CLIENT_WAKE_MODE=manual` as a fallback.
+
 ## Desktop client (persistent process)
 
 Run the CLI-based desktop client:
