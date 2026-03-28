@@ -52,7 +52,7 @@ Node requirement: `>=20`.
 4. Fill required `.env` values:
 
    - `VOICE_API_BEARER_TOKEN`
-   - `OPENCLAW_URL`
+   - `OPENCLAW_URL` (must be an `http://` or `https://` endpoint; do not use `ws://` or `wss://`)
 
 5. Start server:
 
@@ -148,6 +148,46 @@ OpenClaw options:
 - `OPENCLAW_METHOD` (default `POST`)
 - `OPENCLAW_INPUT_FIELD` (default `input`)
 - `OPENCLAW_OUTPUT_FIELD` (default `response`)
+
+### OpenClaw upstream endpoint contract
+
+`OPENCLAW_URL` must point at an HTTP API endpoint that accepts JSON requests and returns a response body the voice server can read.
+
+- Use `http://` or `https://` only.
+- Do not use `ws://` or `wss://`.
+
+Default request body sent to your upstream endpoint:
+
+```json
+{
+  "input": "hello",
+  "sessionId": "Kitchen"
+}
+```
+
+Default response body expected from your upstream endpoint:
+
+```json
+{
+  "response": "Hi there"
+}
+```
+
+Field mapping behavior:
+
+- `OPENCLAW_INPUT_FIELD` changes the outgoing input key.
+- `OPENCLAW_OUTPUT_FIELD` changes the response key read from JSON replies.
+
+Concrete examples:
+
+- If `OPENCLAW_INPUT_FIELD=message`, outgoing JSON becomes `{"message":"hello","sessionId":"Kitchen"}`.
+- If `OPENCLAW_OUTPUT_FIELD=reply`, incoming JSON should look like `{"reply":"Hi there"}`.
+
+Troubleshooting wrong endpoint errors:
+
+- `404` usually means the URL path is wrong (for example pointing at `/` instead of `/api/chat`).
+- `405` usually means the endpoint does not allow the configured method (default is `POST`).
+- HTML responses (for example `<!doctype html>`) usually mean `OPENCLAW_URL` is pointed at a web page instead of the JSON API endpoint.
 
 faster-whisper options:
 
