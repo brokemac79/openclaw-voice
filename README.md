@@ -1,90 +1,134 @@
-# openclaw-voice (Phase 1 MVP)
+# openclaw-voice (Phase 2)
 
-Browser push-to-talk client + Node endpoint for this pipeline:
+Voice interface for OpenClaw with:
 
-1. Browser audio upload
-2. OpenAI Whisper transcription
-3. OpenClaw query
-4. Edge TTS audio synthesis
-5. Browser audio playback
+1. browser push-to-talk client
+2. local faster-whisper speech-to-text
+3. OpenClaw upstream query
+4. Edge TTS generation
+5. optional Sonos relay output
+6. optional desktop persistent voice client
 
-## What this MVP includes
+## Phase 2 highlights
 
-- PWA-style browser UI with one-screen setup and push-to-talk interaction
-- Bearer-token authentication on `/api/voice/turn`
-- Whisper API transcription integration
-- OpenClaw HTTP endpoint integration
-- Edge TTS speech synthesis and playback
+- Local STT via `faster-whisper` (no OpenAI Whisper dependency)
+- Sonos output integration through a local HTTP relay endpoint
+- Desktop client (`npm run desktop:client`) for non-browser usage
 
 ## End-user documentation
 
-- See `docs/user-guide.md` for the plain-language setup and usage guide.
+- See `docs/user-guide.md` for user-focused setup and operation.
 
-## Operator vs end-user docs
+## Quick start (server)
 
-- Operators/admins: use this `README.md` for install, env vars, deploy, and service operations.
-- End users: use `docs/user-guide.md` for browser setup and push-to-talk usage only.
+Node requirement: `>=20`.
 
-## Quick start
-
-Node.js requirement: `>=20` (see `package.json` engines).
-
-1. Install dependencies:
+1. Install Node dependencies:
 
    ```bash
    npm install
    ```
 
-2. Configure environment:
+2. Create environment file:
 
    ```bash
    cp .env.example .env
    ```
 
-    Fill in at least:
+3. Install Python dependencies for local faster-whisper:
 
-    - `OPENAI_API_KEY`
-    - `VOICE_API_BEARER_TOKEN`
-    - `OPENCLAW_URL`
+   ```bash
+   python3 -m pip install faster-whisper
+   ```
 
-    Optional but common for production OpenClaw services:
+4. Fill required `.env` values:
 
-    - `OPENCLAW_AUTH_BEARER` (sent as `Authorization: Bearer <token>` to your upstream OpenClaw endpoint)
+   - `VOICE_API_BEARER_TOKEN`
+   - `OPENCLAW_URL`
 
-3. Run locally:
+5. Start server:
 
    ```bash
    npm run dev
    ```
 
-4. Open `http://localhost:8787`, fill in Settings (service URL + access token), click **Save Settings**, then hold the button to talk.
+6. Open `http://localhost:8787` and use the web client.
+
+## Desktop client (persistent process)
+
+Run the CLI-based desktop client:
+
+```bash
+npm run desktop:client
+```
+
+Default behavior:
+
+- press Enter to record a 5-second clip
+- send to `/api/voice/turn`
+- print transcription + response
+- save reply audio to temp directory
+- optional local playback when `VOICE_CLIENT_PLAY_COMMAND` is configured
+
+The client is designed to run continuously (for example under `systemd`, `pm2`, or a startup script).
 
 ## Environment reference
 
-- `VOICE_API_BEARER_TOKEN`: required; browser clients must send this token to `/api/voice/turn`.
-- `OPENCLAW_URL`: required; full HTTP(S) URL for the upstream OpenClaw-compatible chat endpoint (for example `/api/chat`), not a WebSocket URL.
-- `OPENCLAW_AUTH_BEARER`: optional; bearer token forwarded to OpenClaw when your upstream requires auth.
-- `OPENCLAW_METHOD`: optional; defaults to `POST`.
-- `OPENCLAW_INPUT_FIELD`: optional; defaults to `input`.
-- `OPENCLAW_OUTPUT_FIELD`: optional; defaults to `response`.
+Required:
 
-Example `.env` snippet:
+- `VOICE_API_BEARER_TOKEN`
+- `OPENCLAW_URL`
 
-```bash
-OPENCLAW_URL="https://openclaw.example.com/api/chat"
-OPENCLAW_AUTH_BEARER="replace-with-upstream-openclaw-token"
-VOICE_API_BEARER_TOKEN="replace-with-browser-client-token"
+OpenClaw options:
+
+- `OPENCLAW_AUTH_BEARER`
+- `OPENCLAW_METHOD` (default `POST`)
+- `OPENCLAW_INPUT_FIELD` (default `input`)
+- `OPENCLAW_OUTPUT_FIELD` (default `response`)
+
+faster-whisper options:
+
+- `FASTER_WHISPER_PYTHON_BIN` (default `python3`)
+- `FASTER_WHISPER_MODEL` (default `base.en`)
+- `FASTER_WHISPER_LANGUAGE` (default `en`)
+- `FASTER_WHISPER_DEVICE` (default `auto`)
+- `FASTER_WHISPER_COMPUTE_TYPE` (default `int8`)
+- `FASTER_WHISPER_TIMEOUT_MS` (default `120000`)
+
+Sonos relay options:
+
+- `SONOS_RELAY_URL` (local LAN relay endpoint)
+- `SONOS_ROOM_DEFAULT`
+
+Desktop client options:
+
+- `VOICE_CLIENT_SERVICE_URL`
+- `VOICE_CLIENT_API_PATH`
+- `VOICE_CLIENT_BEARER_TOKEN`
+- `VOICE_CLIENT_SESSION_ID`
+- `VOICE_CLIENT_SONOS_ROOM`
+- `VOICE_CLIENT_OUTPUT_DIR` (defaults to OS temp dir `openclaw-voice-client`)
+- `VOICE_CLIENT_RECORD_COMMAND`
+- `VOICE_CLIENT_PLAY_COMMAND`
+
+## Sonos relay payload contract
+
+When `SONOS_RELAY_URL` is set, each voice turn sends this JSON payload to the relay:
+
+```json
+{
+  "room": "Kitchen",
+  "text": "Assistant response text",
+  "audioMimeType": "audio/mpeg",
+  "audioBase64": "..."
+}
 ```
 
-`OPENCLAW_URL` should point at the upstream HTTP endpoint this server can `POST` JSON to. Do not use an OpenClaw WebSocket URL such as `ws://` or `wss://` here.
+Expected relay behavior:
 
-The default `.env.example` value is `http://127.0.0.1:3000/api/chat` for local setups. In hosted environments, set `OPENCLAW_URL` to your upstream service's full HTTPS chat endpoint.
-
-## UX notes (Phase 1 usability pass)
-
-- Settings are persisted in browser local storage so users do not need to edit `.env` files.
-- Basic fields are kept simple (`Voice Service URL`, `Access Token`, `Room Name`), with `API Path` under **Advanced settings**.
-- The talk button uses pointer events for mouse/touch and is intentionally large for mobile/iOS use.
+- accept local LAN POST requests
+- play supplied MP3 audio on the specified Sonos room
+- return JSON status
 
 ## API contract
 
@@ -92,85 +136,29 @@ The default `.env.example` value is `http://127.0.0.1:3000/api/chat` for local s
 
 - Auth: `Authorization: Bearer <VOICE_API_BEARER_TOKEN>`
 - Content type: `multipart/form-data`
-- Upload handling: `multer@2.x` with an in-memory `audio` file limit of 15 MB per request
 - Fields:
-  - `audio` (required): recorded audio blob
-  - `sessionId` (optional): conversation/session id
+  - `audio` (required)
+  - `sessionId` (optional)
+  - `sonosRoom` (optional; overrides `SONOS_ROOM_DEFAULT`)
 
-Response payload:
+Response:
 
 ```json
 {
   "transcription": "...",
   "responseText": "...",
   "audioMimeType": "audio/mpeg",
-  "audioBase64": "..."
-}
-```
-
-## Deploy notes (VPS)
-
-- Run behind HTTPS reverse proxy (nginx or Caddy)
-- Keep `VOICE_API_BEARER_TOKEN` and optional `OPENCLAW_AUTH_BEARER` secret and rotated
-- Ensure reverse-proxy request body limits allow at least 15 MB for audio uploads
-- Restrict allowed browser origins at the reverse proxy if only one UI origin should call it
-- Use a process manager (systemd or pm2) for restart-on-crash and boot persistence
-
-### nginx reverse proxy example
-
-```nginx
-server {
-  listen 443 ssl;
-  server_name voice.example.com;
-
-  location / {
-    proxy_pass http://127.0.0.1:8787;
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
+  "audioBase64": "...",
+  "sonos": {
+    "routed": true,
+    "room": "Kitchen"
   }
 }
 ```
 
-### Caddy reverse proxy example
+## Deploy notes
 
-```caddy
-voice.example.com {
-  reverse_proxy 127.0.0.1:8787
-}
-```
-
-### systemd service example
-
-```ini
-[Unit]
-Description=openclaw-voice
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=/opt/openclaw-voice
-EnvironmentFile=/opt/openclaw-voice/.env
-ExecStart=/usr/bin/npm start
-Restart=always
-RestartSec=3
-User=www-data
-Group=www-data
-
-[Install]
-WantedBy=multi-user.target
-```
-
-### pm2 example
-
-```bash
-pm2 start npm --name openclaw-voice -- start
-pm2 save
-pm2 startup
-```
-
-## Known MVP limits
-
-- Push-to-talk only (no background or wake word in this phase)
-- Edge TTS is used per Phase 1 plan; future phases should include fallback provider hardening
+- Run behind HTTPS reverse proxy for browser clients
+- Keep bearer tokens secret and rotated
+- Run Sonos relay on a LAN host with reliable uptime
+- Use process supervision (`systemd` or `pm2`) for both server and desktop client
