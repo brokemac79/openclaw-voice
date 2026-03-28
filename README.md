@@ -21,7 +21,7 @@ Voice interface for OpenClaw with:
 - Proactive Sonos alert endpoint (`POST /api/voice/alerts`) for doorbell/calendar/energy events
 - Ambient desktop loop mode for always-on background capture
 - Switchable TTS providers (`TTS_PROVIDER=edge|piper|auto`) with Piper fallback support
-- Dual-relay support for Sonos migration (`SONOS_RELAY_URL` + `SONOS_RELAY_FALLBACK_URL`)
+- Dual-relay support for Sonos migration (`SONOS_RELAY_URL` / `SONOS_RELAY_PI_URL` + `SONOS_RELAY_FALLBACK_URL`)
 
 ## End-user documentation
 
@@ -99,6 +99,41 @@ Recommended operator notes:
 - Leave `VOICE_CLIENT_HOTKEY_ENABLED=true` and adjust `VOICE_CLIENT_HOTKEY_KEY` / `VOICE_CLIENT_HOTKEY_MODIFIERS` if you want a fallback trigger.
 - Use `VOICE_CLIENT_WAKE_COOLDOWN_MS` to prevent repeated accidental triggers.
 - On Linux, the global hotkey listener expects a desktop session that supports system-wide key capture.
+
+### Ambient mode setup
+
+Use ambient mode when the desktop client should wake itself on a timer instead of waiting for a wake word or hotkey.
+
+1. Set `VOICE_CLIENT_WAKE_MODE=ambient` for strict ambient polling, or keep `VOICE_CLIENT_WAKE_MODE=auto` and set `VOICE_CLIENT_AMBIENT_MODE=true` if you want ambient capture enabled alongside the normal client behavior.
+2. Set `VOICE_CLIENT_AMBIENT_INTERVAL_MS` to the delay between captures. Keep it at `1000` or higher.
+3. Leave `VOICE_CLIENT_AMBIENT_AUTO_START=true` if the loop should begin immediately at process start.
+4. Start the client with `npm run desktop:client` and confirm you see `Ambient loop active.` in the terminal.
+
+Ambient mode still keeps manual Enter-triggered recording available in the terminal.
+
+### Piper TTS setup
+
+Use Piper when you want local speech synthesis or a fallback when Edge TTS is unavailable.
+
+1. Install the Piper CLI and download a voice model on the machine running the server.
+2. Set `TTS_PROVIDER=piper` to force Piper, or set `TTS_PROVIDER=edge` plus `TTS_FALLBACK_PROVIDER=piper` to keep Edge as the first choice.
+3. Set `PIPER_MODEL_PATH` to the absolute path of the downloaded `.onnx` voice model.
+4. Optional: set `PIPER_BIN` if the executable is not available as `piper` on your `PATH`.
+5. Optional: tune `PIPER_SPEAKER_ID`, `PIPER_LENGTH_SCALE`, `PIPER_NOISE_SCALE`, `PIPER_NOISE_W`, and `PIPER_SENTENCE_SILENCE` for your chosen voice.
+
+Important: if Piper is your primary provider, or your Edge provider falls back to Piper, the service needs a valid `PIPER_MODEL_PATH` before it can synthesize responses.
+
+### Sonos Pi relay migration
+
+Phase 4 supports a gradual relay move without changing clients.
+
+1. Keep `SONOS_RELAY_URL` pointed at the current primary relay, or set `SONOS_RELAY_PI_URL` if you want a clearer LAN/Pi-specific alias.
+2. Set `SONOS_RELAY_FALLBACK_URL` to the secondary relay that should receive traffic if the primary fails.
+3. Set `SONOS_RELAY_AUTH_BEARER` if your relay requires bearer auth.
+4. Adjust `SONOS_RELAY_TIMEOUT_MS` to control how long each relay attempt can take before failover.
+5. Verify both endpoints with `GET /api/sonos/relay/health` before moving production traffic.
+
+The server treats `SONOS_RELAY_PI_URL` as an alias for the primary relay URL. If both are set, `SONOS_RELAY_URL` wins.
 
 ## Environment reference
 
@@ -235,10 +270,31 @@ Use this endpoint for proactive notifications (for example: doorbell, calendar r
 
 Response includes routed room, synthesized text, and selected TTS provider.
 
+Example:
+
+```bash
+curl -X POST http://localhost:8787/api/voice/alerts \
+  -H "Authorization: Bearer <VOICE_API_BEARER_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Doorbell",
+    "message": "Someone is at the front door.",
+    "room": "Kitchen",
+    "source": "doorbell"
+  }'
+```
+
 ### `GET /api/sonos/relay/health`
 
 - Auth: `Authorization: Bearer <VOICE_API_BEARER_TOKEN>`
 - Returns reachability of configured primary/fallback relay URLs.
+
+Example:
+
+```bash
+curl http://localhost:8787/api/sonos/relay/health \
+  -H "Authorization: Bearer <VOICE_API_BEARER_TOKEN>"
+```
 
 ## Deploy notes
 

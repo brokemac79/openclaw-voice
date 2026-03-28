@@ -62,6 +62,8 @@ If your administrator set up the desktop voice client for you:
 
 If your administrator left the client in `manual` mode, pressing **Enter** still starts a recording without the wake word or hotkey.
 
+If the client is configured for ambient mode, it can also record on a timer without waiting for a manual trigger.
+
 If the desktop client is meant to stay available all day, ask your administrator to run it as a background service so you do not need to restart it manually.
 
 ## How To Talk To OpenClaw
@@ -110,6 +112,7 @@ Use these only if replies should play through Sonos:
 - `SONOS_RELAY_URL` or `SONOS_RELAY_PI_URL`: primary local relay address that accepts generated audio
 - `SONOS_RELAY_FALLBACK_URL`: optional secondary relay used during migration/failover
 - `SONOS_RELAY_AUTH_BEARER`: optional relay bearer token
+- `SONOS_RELAY_TIMEOUT_MS`: timeout per relay attempt before trying the fallback relay
 - `SONOS_ROOM_DEFAULT`: fallback room name when a browser or desktop client does not send one
 
 If a household uses more than one Sonos room, users can enter a room name in the browser settings or the desktop client can send `VOICE_CLIENT_SONOS_ROOM`.
@@ -127,7 +130,7 @@ Use these when running the always-on desktop client:
 - `VOICE_CLIENT_RECORD_COMMAND`: command used to capture a short recording
 - `VOICE_CLIENT_PLAY_COMMAND`: optional command to play reply audio locally
 - `VOICE_CLIENT_WAKE_MODE`: `auto`, `wake-word`, `hotkey`, `manual`, or `ambient`
-- `VOICE_CLIENT_AMBIENT_MODE`: optional boolean flag to force ambient mode regardless of wake mode
+- `VOICE_CLIENT_AMBIENT_MODE`: optional boolean flag to add ambient timed captures without switching away from the normal mode
 - `VOICE_CLIENT_AMBIENT_INTERVAL_MS`: interval between ambient captures
 - `VOICE_CLIENT_AMBIENT_AUTO_START`: whether ambient loop starts immediately
 - `VOICE_CLIENT_WAKE_WORD_ENABLED`: whether the desktop client should listen for wake-word triggers
@@ -150,12 +153,17 @@ Phase 4 adds local Piper as a TTS option and fallback:
 
 - `TTS_PROVIDER`: `edge`, `piper`, or `auto`
 - `TTS_FALLBACK_PROVIDER`: currently supports `piper` fallback when `TTS_PROVIDER=edge`
+- `PIPER_BIN`: Piper executable name or absolute path when it is not available as `piper`
 - `PIPER_MODEL_PATH`: required when Piper is used
 - Optional Piper tuning: `PIPER_SPEAKER_ID`, `PIPER_LENGTH_SCALE`, `PIPER_NOISE_SCALE`, `PIPER_NOISE_W`, `PIPER_SENTENCE_SILENCE`
+
+If administrators want local-only speech output, they should set `TTS_PROVIDER=piper`, install the Piper CLI on the server, and point `PIPER_MODEL_PATH` at a downloaded voice model.
 
 ### Proactive alerts (doorbell/calendar/energy)
 
 Administrators can trigger Sonos announcements without waiting for a user voice turn by calling `POST /api/voice/alerts` with bearer auth and a JSON payload containing `message` (or `text`) and optional `title`, `room`, and `source`.
+
+They can verify the configured primary and fallback relay endpoints with `GET /api/sonos/relay/health` before relying on proactive announcements.
 
 ## Tips For Best Results
 
@@ -255,7 +263,7 @@ Yes. If the talk button is selected, you can hold **Space** or **Enter** to reco
 
 ### Can I talk to it in the background?
 
-Yes in desktop mode. Phase 3 adds wake-word and hotkey triggers for always-on usage when configured by your administrator.
+Yes in desktop mode. Phase 4 adds wake-word, hotkey, and ambient triggers for always-on usage when configured by your administrator.
 
 ### Is there a desktop option?
 
