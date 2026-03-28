@@ -159,6 +159,20 @@ Phase 4 adds local Piper as a TTS option and fallback:
 
 If administrators want local-only speech output, they should set `TTS_PROVIDER=piper`, install the Piper CLI on the server, and point `PIPER_MODEL_PATH` at a downloaded voice model.
 
+Quick Piper operator checks:
+
+- Install source: <https://github.com/rhasspy/piper/releases>
+- Voice models: <https://huggingface.co/rhasspy/piper-voices> (for example `en_US-lessac-medium.onnx`)
+- This project uses `PIPER_BIN` as the executable env var (equivalent to `PIPER_EXECUTABLE` in some external guides)
+- Smoke test:
+
+  ```bash
+  echo "Piper smoke test" | "${PIPER_BIN:-piper}" --model "$PIPER_MODEL_PATH" --output_file /tmp/piper-smoke.wav
+  ls -lh /tmp/piper-smoke.wav
+  ```
+
+Piper synthesis returns WAV audio, while Edge synthesis returns MP3 audio.
+
 ### Proactive alerts (doorbell/calendar/energy)
 
 Administrators can trigger Sonos announcements without waiting for a user voice turn by calling `POST /api/voice/alerts` with bearer auth and a JSON payload containing `message` (or `text`) and optional `title`, `room`, and `source`.
