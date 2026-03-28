@@ -62,7 +62,7 @@ Node.js requirement: `>=20` (see `package.json` engines).
 ## Environment reference
 
 - `VOICE_API_BEARER_TOKEN`: required; browser clients must send this token to `/api/voice/turn`.
-- `OPENCLAW_URL`: required; full upstream URL for the OpenClaw chat endpoint.
+- `OPENCLAW_URL`: required; full HTTP(S) URL for the upstream OpenClaw-compatible chat endpoint (for example `/api/chat`), not a WebSocket URL.
 - `OPENCLAW_AUTH_BEARER`: optional; bearer token forwarded to OpenClaw when your upstream requires auth.
 - `OPENCLAW_METHOD`: optional; defaults to `POST`.
 - `OPENCLAW_INPUT_FIELD`: optional; defaults to `input`.
@@ -75,6 +75,8 @@ OPENCLAW_URL="https://openclaw.example.com/api/chat"
 OPENCLAW_AUTH_BEARER="replace-with-upstream-openclaw-token"
 VOICE_API_BEARER_TOKEN="replace-with-browser-client-token"
 ```
+
+`OPENCLAW_URL` should point at the upstream HTTP endpoint this server can `POST` JSON to. Do not use an OpenClaw WebSocket URL such as `ws://` or `wss://` here.
 
 ## UX notes (Phase 1 usability pass)
 
