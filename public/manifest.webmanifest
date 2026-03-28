@@ -1,0 +1,10 @@
+{
+  "name": "OpenClaw Voice MVP",
+  "short_name": "OpenClaw Voice",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f8fb",
+  "theme_color": "#102a43",
+  "description": "Push-to-talk browser client for OpenClaw voice loop MVP",
+  "icons": []
+}

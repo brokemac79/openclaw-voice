@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#102a43" />
+    <title>OpenClaw Voice MVP</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <style>
+      :root {
+        --ink: #0b1827;
+        --panel: #f5f7fb;
+        --accent: #2f855a;
+        --accent-strong: #276749;
+        --error: #b42318;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background: radial-gradient(circle at 20% 20%, #e2f3e8 0%, #dbe9f4 40%, #f7f8fb 100%);
+      }
+
+      main {
+        width: min(720px, 92vw);
+        margin: 3rem auto;
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.85);
+        border: 1px solid rgba(16, 42, 67, 0.1);
+        border-radius: 16px;
+        backdrop-filter: blur(6px);
+      }
+
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: clamp(1.6rem, 2.6vw, 2.1rem);
+      }
+
+      p {
+        margin: 0.5rem 0 1rem;
+        line-height: 1.5;
+      }
+
+      .row {
+        display: grid;
+        gap: 0.75rem;
+        margin: 1rem 0;
+      }
+
+      label {
+        font-size: 0.92rem;
+        font-weight: 600;
+      }
+
+      input {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 0.75rem;
+        font-size: 0.95rem;
+      }
+
+      button {
+        border: 0;
+        border-radius: 999px;
+        background: var(--accent);
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 700;
+        padding: 0.9rem 1.2rem;
+        cursor: pointer;
+        transition: transform 120ms ease, background 120ms ease;
+      }
+
+      button:hover {
+        background: var(--accent-strong);
+        transform: translateY(-1px);
+      }
+
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+
+      .status {
+        font-weight: 700;
+      }
+
+      .status.error {
+        color: var(--error);
+      }
+
+      .card {
+        margin-top: 1rem;
+        padding: 1rem;
+        border-radius: 12px;
+        background: var(--panel);
+        border: 1px solid rgba(16, 42, 67, 0.1);
+      }
+
+      code {
+        display: block;
+        white-space: pre-wrap;
+        line-height: 1.5;
+      }
+
+      @media (max-width: 640px) {
+        main {
+          margin: 1rem auto;
+          padding: 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>OpenClaw Voice (Phase 1 MVP)</h1>
+      <p>Press and hold to record, release to send audio to Whisper -&gt; OpenClaw -&gt; Edge TTS.</p>
+
+      <div class="row">
+        <label for="token">API Bearer Token</label>
+        <input id="token" type="password" placeholder="Paste VOICE_API_BEARER_TOKEN" autocomplete="off" />
+      </div>
+
+      <div class="row">
+        <label for="sessionId">Session ID (optional)</label>
+        <input id="sessionId" type="text" placeholder="living-room" autocomplete="off" />
+      </div>
+
+      <button id="recordButton" disabled>Hold to talk</button>
+      <p id="status" class="status">Checking microphone support...</p>
+
+      <div class="card">
+        <strong>Transcription</strong>
+        <code id="transcription">(none yet)</code>
+      </div>
+
+      <div class="card">
+        <strong>OpenClaw Response</strong>
+        <code id="response">(none yet)</code>
+      </div>
+
+      <audio id="player" controls preload="none" style="width: 100%; margin-top: 1rem"></audio>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
