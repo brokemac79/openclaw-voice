@@ -286,11 +286,18 @@ Important: Piper outputs WAV (`audio/wav`). Edge TTS outputs MP3 (`audio/mpeg`).
 
 Phase 4 supports a gradual relay move without changing clients.
 
+Important: Sonos playback is optional and needs a separate relay service running on your local network. This app does not include built-in Sonos transport; it only sends generated audio to your relay endpoint.
+
 1. Keep `SONOS_RELAY_URL` pointed at the current primary relay, or set `SONOS_RELAY_PI_URL` if you want a clearer LAN/Pi-specific alias.
 2. Set `SONOS_RELAY_FALLBACK_URL` to the secondary relay that should receive traffic if the primary fails.
 3. Set `SONOS_RELAY_AUTH_BEARER` if your relay requires bearer auth.
 4. Adjust `SONOS_RELAY_TIMEOUT_MS` to control how long each relay attempt can take before failover.
 5. Verify both endpoints with `GET /api/sonos/relay/health` before moving production traffic.
+
+Relay implementation guidance:
+
+- Required behavior: expose an HTTP POST endpoint that accepts the JSON payload shown in [Sonos relay payload contract](#sonos-relay-payload-contract), then forward `audioBase64` to the target Sonos room.
+- Reference project: `jishi/node-sonos-http-api` is a common base for Sonos control; add a small adapter route that matches this app's payload contract.
 
 The server treats `SONOS_RELAY_PI_URL` as an alias for the primary relay URL. If both are set, `SONOS_RELAY_URL` wins.
 
@@ -359,6 +366,8 @@ faster-whisper options:
 
 Sonos relay options:
 
+Use these only when you run an external Sonos relay service:
+
 - `SONOS_RELAY_URL` (primary relay endpoint)
 - `SONOS_RELAY_PI_URL` (alias for primary LAN relay endpoint)
 - `SONOS_RELAY_FALLBACK_URL` (optional secondary relay endpoint)
@@ -406,6 +415,8 @@ Desktop client options:
 - `VOICE_CLIENT_HOTKEY_MODIFIERS`
 
 ## Sonos relay payload contract
+
+Sonos support is optional. When enabled, this app POSTs audio to a separate relay service; it does not talk to Sonos devices directly.
 
 When `SONOS_RELAY_URL` is set, each voice turn sends this JSON payload to the relay:
 
