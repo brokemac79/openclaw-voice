@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Phase 1 MVP voice interface for OpenClaw",
+  "description": "Phase 4 voice interface for OpenClaw with proactive alerts",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
@@ -13,9 +13,12 @@
     "node": ">=20"
   },
   "dependencies": {
+    "@picovoice/porcupine-node": "^4.0.2",
+    "@picovoice/pvrecorder-node": "^1.2.8",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "msedge-tts": "^2.0.4",
-    "multer": "^2.1.1"
+    "multer": "^2.1.1",
+    "node-global-key-listener": "^0.3.0"
   }
 }

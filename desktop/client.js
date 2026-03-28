@@ -19,12 +19,64 @@ const sonosRoom = process.env.VOICE_CLIENT_SONOS_ROOM || "";
 const recorderCommandTemplate = process.env.VOICE_CLIENT_RECORD_COMMAND || "sox -q -d -c 1 -r 16000 \"{output}\" trim 0 5";
 const playerCommandTemplate = process.env.VOICE_CLIENT_PLAY_COMMAND || "";
 const outputDir = process.env.VOICE_CLIENT_OUTPUT_DIR || path.join(os.tmpdir(), "openclaw-voice-client");
+const wakeMode = (process.env.VOICE_CLIENT_WAKE_MODE || "auto").toLowerCase();
+const ambientModeEnabled = wakeMode === "ambient" || parseBool(process.env.VOICE_CLIENT_AMBIENT_MODE, false);
+const ambientIntervalMs = parseIntWithDefault(process.env.VOICE_CLIENT_AMBIENT_INTERVAL_MS, 20000);
+const ambientAutoStart = parseBool(process.env.VOICE_CLIENT_AMBIENT_AUTO_START, true);
+const wakeWordEnabled = parseBool(process.env.VOICE_CLIENT_WAKE_WORD_ENABLED, true);
+const wakeHotkeyEnabled = parseBool(process.env.VOICE_CLIENT_HOTKEY_ENABLED, true);
+const wakeCooldownMs = parseIntWithDefault(process.env.VOICE_CLIENT_WAKE_COOLDOWN_MS, 2500);
+const wakeBeepEnabled = parseBool(process.env.VOICE_CLIENT_WAKE_BEEP_ENABLED, true);
+const wakeBeepCommandTemplate = process.env.VOICE_CLIENT_WAKE_BEEP_COMMAND || "";
+
+const porcupineAccessKey = process.env.PORCUPINE_ACCESS_KEY || "";
+const porcupineKeywordPath = process.env.VOICE_CLIENT_PORCUPINE_KEYWORD_PATH || "";
+const porcupineModelPath = process.env.VOICE_CLIENT_PORCUPINE_MODEL_PATH || "";
+const porcupineSensitivity = parseFloatWithDefault(process.env.VOICE_CLIENT_PORCUPINE_SENSITIVITY, 0.5);
+const porcupineDeviceIndex = parseIntWithDefault(process.env.VOICE_CLIENT_PORCUPINE_DEVICE_INDEX, -1);
+
+const hotkeyKey = (process.env.VOICE_CLIENT_HOTKEY_KEY || "SPACE").trim().toUpperCase();
+const hotkeyModifiers = (process.env.VOICE_CLIENT_HOTKEY_MODIFIERS || "CTRL+SHIFT")
+  .split("+")
+  .map((item) => item.trim().toUpperCase())
+  .filter(Boolean);
 
 if (!bearerToken) {
   throw new Error("Missing VOICE_CLIENT_BEARER_TOKEN (or VOICE_API_BEARER_TOKEN)");
 }
 
 await fs.promises.mkdir(outputDir, { recursive: true });
+
+function parseBool(value, defaultValue) {
+  if (value == null || value === "") {
+    return defaultValue;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+  return defaultValue;
+}
+
+function parseIntWithDefault(value, defaultValue) {
+  if (value == null || value === "") {
+    return defaultValue;
+  }
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? defaultValue : parsed;
+}
+
+function parseFloatWithDefault(value, defaultValue) {
+  if (value == null || value === "") {
+    return defaultValue;
+  }
+  const parsed = Number.parseFloat(value);
+  return Number.isNaN(parsed) ? defaultValue : parsed;
+}
 
 function toApiUrl() {
   return new URL(apiPath, `${serviceUrl}/`).toString();
@@ -35,7 +87,7 @@ function stamp() {
 }
 
 async function runTemplateCommand(template, outputPath) {
-  const command = template.replace("{output}", outputPath);
+  const command = template.replace("{output}", outputPath || "");
   await execAsync(command, { maxBuffer: 2 * 1024 * 1024 });
 }
 
@@ -88,21 +140,147 @@ async function maybePlayAudio(audioPath) {
   await runTemplateCommand(playerCommandTemplate, audioPath);
 }
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
-
-process.stdout.write("OpenClaw desktop voice client started.\n");
-process.stdout.write("Press Enter to capture a 5-second clip, or type q then Enter to quit.\n\n");
-
-for await (const line of rl) {
-  const cmd = line.trim().toLowerCase();
-  if (cmd === "q" || cmd === "quit" || cmd === "exit") {
-    break;
+async function maybePlayWakeBeep() {
+  if (!wakeBeepEnabled) {
+    return;
   }
 
+  process.stdout.write("\u0007");
+
+  if (wakeBeepCommandTemplate) {
+    await runTemplateCommand(wakeBeepCommandTemplate, "");
+  }
+}
+
+function areRequiredModifiersDown(down) {
+  const modKeyMap = {
+    CTRL: ["LEFT CTRL", "RIGHT CTRL", "LEFT CONTROL", "RIGHT CONTROL"],
+    SHIFT: ["LEFT SHIFT", "RIGHT SHIFT"],
+    ALT: ["LEFT ALT", "RIGHT ALT"],
+    META: ["LEFT META", "RIGHT META", "LEFT SUPER", "RIGHT SUPER", "LEFT COMMAND", "RIGHT COMMAND"],
+    CMD: ["LEFT META", "RIGHT META", "LEFT COMMAND", "RIGHT COMMAND"],
+    WIN: ["LEFT META", "RIGHT META", "LEFT SUPER", "RIGHT SUPER"]
+  };
+
+  return hotkeyModifiers.every((modifier) => {
+    const keys = modKeyMap[modifier];
+    if (!keys) {
+      return false;
+    }
+    return keys.some((keyName) => Boolean(down[keyName]));
+  });
+}
+
+async function startWakeWordDetector(onWake) {
+  if (!wakeWordEnabled) {
+    return null;
+  }
+
+  if (!porcupineAccessKey || !porcupineKeywordPath) {
+    throw new Error(
+      "Wake word mode requires PORCUPINE_ACCESS_KEY and VOICE_CLIENT_PORCUPINE_KEYWORD_PATH"
+    );
+  }
+
+  const [{ Porcupine }, { PvRecorder }] = await Promise.all([
+    import("@picovoice/porcupine-node"),
+    import("@picovoice/pvrecorder-node")
+  ]);
+
+  const porcupine = new Porcupine(
+    porcupineAccessKey,
+    [porcupineKeywordPath],
+    [porcupineSensitivity],
+    porcupineModelPath || undefined
+  );
+  const recorder = new PvRecorder(porcupine.frameLength, porcupineDeviceIndex);
+
+  let active = true;
+  let lastWakeAt = 0;
+
+  recorder.start();
+
+  const runLoop = (async () => {
+    while (active) {
+      const frame = await recorder.read();
+      const keywordIndex = porcupine.process(frame);
+      if (keywordIndex < 0) {
+        continue;
+      }
+
+      const now = Date.now();
+      if (now - lastWakeAt < wakeCooldownMs) {
+        continue;
+      }
+
+      lastWakeAt = now;
+      onWake("wake-word");
+    }
+  })();
+
+  runLoop.catch((error) => {
+    process.stderr.write(
+      `Wake word loop stopped: ${error instanceof Error ? error.message : String(error)}\n`
+    );
+  });
+
+  return async () => {
+    active = false;
+    try {
+      recorder.stop();
+    } catch {
+      // ignored
+    }
+    recorder.release();
+    porcupine.release();
+  };
+}
+
+async function startGlobalHotkeyListener(onWake) {
+  if (!wakeHotkeyEnabled) {
+    return null;
+  }
+
+  const { GlobalKeyboardListener } = await import("node-global-key-listener");
+  const listener = new GlobalKeyboardListener();
+
+  const handler = (event, down) => {
+    if (event.state !== "DOWN") {
+      return false;
+    }
+    if (event.name !== hotkeyKey) {
+      return false;
+    }
+    if (!areRequiredModifiersDown(down)) {
+      return false;
+    }
+
+    onWake("hotkey");
+    return true;
+  };
+
+  listener.addListener(handler);
+
+  return async () => {
+    listener.removeListener(handler);
+    if (typeof listener.kill === "function") {
+      listener.kill();
+    }
+  };
+}
+
+let isProcessingTurn = false;
+
+async function runVoiceTurn(triggerSource) {
+  if (isProcessingTurn) {
+    process.stdout.write(`Ignored ${triggerSource} trigger while another turn is in progress.\n`);
+    return;
+  }
+
+  isProcessingTurn = true;
   try {
+    await maybePlayWakeBeep();
+    process.stdout.write(`Wake trigger: ${triggerSource}\n`);
     process.stdout.write("Recording...\n");
     const clip = await recordClip();
     process.stdout.write(`Recorded: ${clip}\n`);
@@ -120,9 +298,120 @@ for await (const line of rl) {
     }
   } catch (error) {
     process.stderr.write(`Voice turn failed: ${error instanceof Error ? error.message : String(error)}\n`);
+  } finally {
+    isProcessingTurn = false;
+    process.stdout.write("\nReady for next wake trigger. Type q then Enter to quit.\n");
+  }
+}
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
+process.stdout.write("OpenClaw desktop voice client started.\n");
+process.stdout.write("Press Enter for manual fallback recording, or type q then Enter to quit.\n");
+
+if (ambientModeEnabled) {
+  process.stdout.write(
+    `Ambient mode enabled (interval: ${ambientIntervalMs}ms, autostart: ${ambientAutoStart ? "on" : "off"}).\n`
+  );
+}
+
+const cleanupFns = [];
+
+if (wakeMode !== "manual" && wakeMode !== "ambient") {
+  try {
+    const stopWakeWord = await startWakeWordDetector(runVoiceTurn);
+    if (stopWakeWord) {
+      cleanupFns.push(stopWakeWord);
+      process.stdout.write("Wake word listener active (Porcupine).\n");
+    }
+  } catch (error) {
+    process.stderr.write(
+      `Wake word setup unavailable: ${error instanceof Error ? error.message : String(error)}\n`
+    );
+    if (wakeMode === "wake-word") {
+      process.stderr.write("Wake mode is strict wake-word. Exiting because setup failed.\n");
+      rl.close();
+      process.exitCode = 1;
+      process.exit();
+    }
+  }
+}
+
+if (wakeMode !== "manual" && wakeMode !== "ambient") {
+  try {
+    const stopHotkey = await startGlobalHotkeyListener(runVoiceTurn);
+    if (stopHotkey) {
+      cleanupFns.push(stopHotkey);
+      process.stdout.write(
+        `Global hotkey listener active (${hotkeyModifiers.join("+")}${hotkeyModifiers.length ? "+" : ""}${hotkeyKey}).\n`
+      );
+    }
+  } catch (error) {
+    process.stderr.write(
+      `Global hotkey setup unavailable: ${error instanceof Error ? error.message : String(error)}\n`
+    );
+    if (wakeMode === "hotkey") {
+      process.stderr.write("Wake mode is strict hotkey. Exiting because setup failed.\n");
+      rl.close();
+      process.exitCode = 1;
+      process.exit();
+    }
+  }
+}
+
+let ambientIntervalId = null;
+
+function startAmbientLoop() {
+  if (!ambientModeEnabled || !ambientAutoStart || ambientIntervalMs < 1000) {
+    return;
+  }
+  if (ambientIntervalId) {
+    return;
   }
 
-  process.stdout.write("\nPress Enter for next turn, or q to quit.\n");
+  const tick = () => {
+    runVoiceTurn("ambient-loop").catch((error) => {
+      process.stderr.write(
+        `Ambient loop turn failed: ${error instanceof Error ? error.message : String(error)}\n`
+      );
+    });
+  };
+
+  tick();
+  ambientIntervalId = setInterval(tick, ambientIntervalMs);
+  process.stdout.write("Ambient loop active.\n");
 }
+
+function stopAmbientLoop() {
+  if (!ambientIntervalId) {
+    return;
+  }
+  clearInterval(ambientIntervalId);
+  ambientIntervalId = null;
+}
+
+startAmbientLoop();
+
+for await (const line of rl) {
+  const cmd = line.trim().toLowerCase();
+  if (cmd === "q" || cmd === "quit" || cmd === "exit") {
+    break;
+  }
+
+  await runVoiceTurn("manual-enter");
+}
+
+for (const cleanup of cleanupFns) {
+  try {
+    await cleanup();
+  } catch {
+    // ignored
+  }
+}
+
+stopAmbientLoop();
 
 rl.close();

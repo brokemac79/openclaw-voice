@@ -1,8 +1,8 @@
 # OpenClaw Voice User Guide
 
-OpenClaw Voice lets you press a button, speak naturally, and hear OpenClaw answer back.
+OpenClaw Voice lets you press a button or use a wake trigger, speak naturally, and hear OpenClaw answer back.
 
-Phase 2 supports both the browser UI and an optional desktop client. Speech transcription runs locally with faster-whisper.
+Phase 4 supports both the browser UI and an optional desktop client with wake-word, hotkey, and ambient always-on activation. Speech transcription runs locally with faster-whisper.
 
 If you are deploying or administering the service, use `README.md` instead. This guide is for end users only.
 
@@ -55,9 +55,12 @@ If your administrator set up the desktop voice client for you:
 1. Open the terminal or command window they provided.
 2. Start the client with `npm run desktop:client` unless they already configured it to start automatically.
 3. Wait for the message that says `OpenClaw desktop voice client started.`
-4. Press **Enter** to record a short voice clip.
-5. Wait for the transcript and reply text to print in the window.
-6. If reply audio is enabled, listen for playback on the local device or on the configured Sonos room.
+4. Say the configured wake phrase (for example **Hey OpenClaw**) or use the fallback hotkey your administrator configured.
+5. Listen for the short confirmation beep, then speak naturally.
+6. Wait for the transcript and reply text to print in the window.
+7. If reply audio is enabled, listen for playback on the local device or on the configured Sonos room.
+
+If your administrator left the client in `manual` mode, pressing **Enter** still starts a recording without the wake word or hotkey.
 
 If the desktop client is meant to stay available all day, ask your administrator to run it as a background service so you do not need to restart it manually.
 
@@ -78,6 +81,13 @@ After each turn, the page shows:
 
 In desktop mode, the same information appears in the terminal window after each recording.
 
+Desktop mode supports these trigger paths:
+
+- Wake word (Picovoice Porcupine)
+- Global hotkey fallback
+- Manual Enter key fallback
+- Ambient loop mode (always-on periodic capture)
+
 ## If You Are Helping With Setup
 
 Most people can skip this section. It is for the person preparing the service or desktop client.
@@ -97,7 +107,9 @@ These settings control local speech transcription:
 
 Use these only if replies should play through Sonos:
 
-- `SONOS_RELAY_URL`: local relay address that accepts the generated audio
+- `SONOS_RELAY_URL` or `SONOS_RELAY_PI_URL`: primary local relay address that accepts generated audio
+- `SONOS_RELAY_FALLBACK_URL`: optional secondary relay used during migration/failover
+- `SONOS_RELAY_AUTH_BEARER`: optional relay bearer token
 - `SONOS_ROOM_DEFAULT`: fallback room name when a browser or desktop client does not send one
 
 If a household uses more than one Sonos room, users can enter a room name in the browser settings or the desktop client can send `VOICE_CLIENT_SONOS_ROOM`.
@@ -114,8 +126,36 @@ Use these when running the always-on desktop client:
 - `VOICE_CLIENT_OUTPUT_DIR`: folder used to store temporary recordings and generated reply audio (defaults to your system temp directory)
 - `VOICE_CLIENT_RECORD_COMMAND`: command used to capture a short recording
 - `VOICE_CLIENT_PLAY_COMMAND`: optional command to play reply audio locally
+- `VOICE_CLIENT_WAKE_MODE`: `auto`, `wake-word`, `hotkey`, `manual`, or `ambient`
+- `VOICE_CLIENT_AMBIENT_MODE`: optional boolean flag to force ambient mode regardless of wake mode
+- `VOICE_CLIENT_AMBIENT_INTERVAL_MS`: interval between ambient captures
+- `VOICE_CLIENT_AMBIENT_AUTO_START`: whether ambient loop starts immediately
+- `VOICE_CLIENT_WAKE_WORD_ENABLED`: whether the desktop client should listen for wake-word triggers
+- `VOICE_CLIENT_HOTKEY_ENABLED`: whether the desktop client should listen for the fallback hotkey
+- `VOICE_CLIENT_WAKE_COOLDOWN_MS`: minimum gap between wake triggers so the client does not retrigger too quickly
+- `VOICE_CLIENT_WAKE_BEEP_ENABLED`: whether to play a confirmation beep on wake trigger
+- `VOICE_CLIENT_WAKE_BEEP_COMMAND`: optional custom command run after the terminal beep
+- `PORCUPINE_ACCESS_KEY`: credential for Picovoice wake-word detection
+- `VOICE_CLIENT_PORCUPINE_KEYWORD_PATH`: absolute path to the `.ppn` wake-word file (for example the trained `Hey OpenClaw` keyword)
+- `VOICE_CLIENT_PORCUPINE_MODEL_PATH`: optional absolute path to a Porcupine model file when you are not using the default
+- `VOICE_CLIENT_PORCUPINE_SENSITIVITY`: wake-word sensitivity value used by the detector
+- `VOICE_CLIENT_PORCUPINE_DEVICE_INDEX`: optional input device index used by Porcupine
+- `VOICE_CLIENT_HOTKEY_KEY` and `VOICE_CLIENT_HOTKEY_MODIFIERS`: fallback global hotkey combination
 
 If you are not using Sonos or the desktop client, you can leave those optional values blank.
+
+### TTS provider settings
+
+Phase 4 adds local Piper as a TTS option and fallback:
+
+- `TTS_PROVIDER`: `edge`, `piper`, or `auto`
+- `TTS_FALLBACK_PROVIDER`: currently supports `piper` fallback when `TTS_PROVIDER=edge`
+- `PIPER_MODEL_PATH`: required when Piper is used
+- Optional Piper tuning: `PIPER_SPEAKER_ID`, `PIPER_LENGTH_SCALE`, `PIPER_NOISE_SCALE`, `PIPER_NOISE_W`, `PIPER_SENTENCE_SILENCE`
+
+### Proactive alerts (doorbell/calendar/energy)
+
+Administrators can trigger Sonos announcements without waiting for a user voice turn by calling `POST /api/voice/alerts` with bearer auth and a JSON payload containing `message` (or `text`) and optional `title`, `room`, and `source`.
 
 ## Tips For Best Results
 
@@ -174,7 +214,9 @@ If you can share technical details with your administrator, include the exact er
 ### The desktop client does not respond
 
 - Make sure the terminal window is still open.
-- Press **Enter** once to start a recording.
+- Try the wake phrase or configured hotkey first, then press **Enter** as fallback.
+- If the client says wake-word setup is unavailable, ask your administrator to recheck `PORCUPINE_ACCESS_KEY` and the keyword file path.
+- If the client says hotkey setup is unavailable, ask your administrator whether the desktop OS supports global keyboard capture for this session.
 - If you see an authentication or missing token error, ask your administrator to recheck the desktop client environment settings.
 - Restart the desktop client if it was not configured as a background service.
 
@@ -213,7 +255,7 @@ Yes. If the talk button is selected, you can hold **Space** or **Enter** to reco
 
 ### Can I talk to it in the background?
 
-No. Phase 2 is still an active push-to-talk experience. It does not support background listening or wake words.
+Yes in desktop mode. Phase 3 adds wake-word and hotkey triggers for always-on usage when configured by your administrator.
 
 ### Is there a desktop option?
 
