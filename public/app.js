@@ -3,6 +3,7 @@ const STORAGE_KEY = "openclawVoiceSettingsV1";
 const serviceUrlInput = document.querySelector("#serviceUrl");
 const tokenInput = document.querySelector("#token");
 const sessionIdInput = document.querySelector("#sessionId");
+const sonosRoomInput = document.querySelector("#sonosRoom");
 const apiPathInput = document.querySelector("#apiPath");
 const saveSettingsButton = document.querySelector("#saveSettings");
 const clearSettingsButton = document.querySelector("#clearSettings");
@@ -17,6 +18,7 @@ const settings = {
   serviceUrl: window.location.origin,
   token: "",
   sessionId: "",
+  sonosRoom: "",
   apiPath: "/api/voice/turn"
 };
 
@@ -73,13 +75,15 @@ function updateInputsFromSettings() {
   serviceUrlInput.value = settings.serviceUrl;
   tokenInput.value = settings.token;
   sessionIdInput.value = settings.sessionId;
+  sonosRoomInput.value = settings.sonosRoom;
   apiPathInput.value = settings.apiPath;
 }
 
 function updateSettingsSummary() {
   const maskedToken = settings.token ? `${"*".repeat(Math.min(settings.token.length, 8))}` : "not set";
-  const room = settings.sessionId || "not set";
-  settingsSummaryEl.textContent = `Server: ${settings.serviceUrl} | Token: ${maskedToken} | Room: ${room}`;
+  const sessionId = settings.sessionId || "not set";
+  const room = settings.sonosRoom || "not set";
+  settingsSummaryEl.textContent = `Server: ${settings.serviceUrl} | Token: ${maskedToken} | Session: ${sessionId} | Room: ${room}`;
 }
 
 function saveSettings() {
@@ -87,6 +91,7 @@ function saveSettings() {
     serviceUrl: serviceUrlInput.value.trim() || window.location.origin,
     token: tokenInput.value.trim(),
     sessionId: sessionIdInput.value.trim(),
+    sonosRoom: sonosRoomInput.value.trim(),
     apiPath: normalizeApiPath(apiPathInput.value)
   };
 
@@ -112,6 +117,7 @@ function saveSettings() {
     serviceUrl: parsedUrl.origin,
     token: next.token,
     sessionId: next.sessionId,
+    sonosRoom: next.sonosRoom,
     apiPath: next.apiPath
   });
 
@@ -134,6 +140,7 @@ function clearSettings() {
     serviceUrl: window.location.origin,
     token: "",
     sessionId: "",
+    sonosRoom: "",
     apiPath: "/api/voice/turn"
   });
   updateInputsFromSettings();
@@ -152,10 +159,13 @@ function loadSettings() {
 
   try {
     const parsed = JSON.parse(raw);
+    const hasSonosRoom = typeof parsed.sonosRoom === "string";
+    const legacyRoom = !hasSonosRoom && typeof parsed.sessionId === "string" ? parsed.sessionId : "";
     Object.assign(settings, {
       serviceUrl: typeof parsed.serviceUrl === "string" ? parsed.serviceUrl : window.location.origin,
       token: typeof parsed.token === "string" ? parsed.token : "",
-      sessionId: typeof parsed.sessionId === "string" ? parsed.sessionId : "",
+      sessionId: hasSonosRoom && typeof parsed.sessionId === "string" ? parsed.sessionId : "",
+      sonosRoom: hasSonosRoom ? parsed.sonosRoom : legacyRoom,
       apiPath: typeof parsed.apiPath === "string" ? normalizeApiPath(parsed.apiPath) : "/api/voice/turn"
     });
   } catch {
@@ -231,6 +241,7 @@ function extensionFromMimeType(mimeType, fallbackExtension) {
 async function postVoiceTurn(blob, filename) {
   const token = settings.token;
   const sessionId = settings.sessionId;
+  const sonosRoom = settings.sonosRoom;
 
   if (!token) {
     setStatus("Please save an access token before recording.", "error");
@@ -243,6 +254,9 @@ async function postVoiceTurn(blob, filename) {
   form.append("audio", blob, filename);
   if (sessionId) {
     form.append("sessionId", sessionId);
+  }
+  if (sonosRoom) {
+    form.append("sonosRoom", sonosRoom);
   }
 
   const response = await fetch(getVoiceTurnEndpoint(), {
