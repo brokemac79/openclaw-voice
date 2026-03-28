@@ -70,10 +70,10 @@ Node requirement: `>=20`.
    cp .env.example .env
    ```
 
-3. Install Python dependencies for local faster-whisper:
+3. Complete the local faster-whisper Python setup:
 
    ```bash
-   python3 -m pip install faster-whisper
+   # See the "faster-whisper Python setup (beginner-friendly)" section below.
    ```
 
 4. Fill required `.env` values:
@@ -88,6 +88,95 @@ Node requirement: `>=20`.
    ```
 
 6. Open `http://localhost:8787` and use the web client.
+
+## faster-whisper Python setup (beginner-friendly)
+
+If you have never installed Python tooling before, follow these steps exactly on the same machine that runs the Node server.
+
+### 1) Install Python 3 and pip
+
+- Python download page: <https://www.python.org/downloads/>
+- pip installation/upgrade docs: <https://pip.pypa.io/en/stable/installation/>
+
+Verify both commands work:
+
+```bash
+python3 --version
+python3 -m pip --version
+```
+
+If `python3 -m pip --version` fails, install pip first, then re-run the check.
+
+### 2) Create and activate a virtual environment (recommended)
+
+From the project root:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
+```
+
+Why: this keeps Python packages for this project isolated from system-wide packages.
+
+### 3) Install ffmpeg (required for many audio files)
+
+`faster-whisper` relies on ffmpeg for decoding common input formats.
+
+- macOS (Homebrew): `brew install ffmpeg`
+- Ubuntu/Debian: `sudo apt-get update && sudo apt-get install -y ffmpeg`
+- Fedora/RHEL: `sudo dnf install -y ffmpeg`
+- Windows (Chocolatey): `choco install ffmpeg -y`
+
+Verify it is available:
+
+```bash
+ffmpeg -version
+```
+
+### 4) Install faster-whisper
+
+```bash
+python3 -m pip install faster-whisper
+```
+
+### 5) Expect model download on first transcription
+
+The first transcription downloads the selected model and caches it on disk.
+
+- `tiny.en`: roughly 75 MB
+- `base.en`: roughly 140 MB (default)
+- `small.en`: roughly 460 MB
+
+The first run can take longer depending on your network speed.
+
+### 6) Recommended CPU-only defaults
+
+For most CPU-only machines, start with:
+
+```env
+FASTER_WHISPER_MODEL=base.en
+FASTER_WHISPER_DEVICE=cpu
+FASTER_WHISPER_COMPUTE_TYPE=int8
+```
+
+If your machine is very resource-constrained, try `FASTER_WHISPER_MODEL=tiny.en` for faster/cheaper transcription with lower accuracy.
+
+### 7) Run a standalone smoke test
+
+If you do not already have `test.wav`, create a short sample file:
+
+```bash
+ffmpeg -f lavfi -i "anullsrc=r=16000:cl=mono" -t 2 test.wav
+```
+
+Then run:
+
+```bash
+python3 scripts/faster_whisper_transcribe.py --audio-path test.wav --model base.en
+```
+
+Expected result: JSON printed to stdout (with `text`, `language`, and `duration`) and no Python traceback.
 
 ## Verify your setup (before full end-to-end)
 
@@ -121,15 +210,7 @@ curl -X POST "$OPENCLAW_URL" \
 
 Expected: a normal OpenClaw response payload (not timeout/auth errors).
 
-4) faster-whisper standalone script:
-
-```bash
-python3 scripts/faster_whisper_transcribe.py --audio-path test.wav --model base.en
-```
-
-Expected: JSON output with fields like `text`, `language`, and `duration`.
-
-5) Sonos relay health (if Sonos is enabled):
+4) Sonos relay health (if Sonos is enabled):
 
 ```bash
 curl http://localhost:8787/api/sonos/relay/health \
@@ -138,12 +219,13 @@ curl http://localhost:8787/api/sonos/relay/health \
 
 Expected: configured relay(s) reported reachable.
 
-6) Desktop client manual-mode verification:
+5) Desktop client manual-mode verification:
 
 - Set `VOICE_CLIENT_WAKE_MODE=manual` in your desktop client environment.
 - Run `npm run desktop:client`.
 - Press Enter to record a short turn.
 - Confirm transcription + response print in terminal before enabling wake-word mode.
+
 ## Desktop client prerequisites
 
 Before running `npm run desktop:client`, confirm these requirements.
@@ -279,11 +361,18 @@ Important: Piper outputs WAV (`audio/wav`). Edge TTS outputs MP3 (`audio/mpeg`).
 
 Phase 4 supports a gradual relay move without changing clients.
 
+Important: Sonos playback is optional and needs a separate relay service running on your local network. This app does not include built-in Sonos transport; it only sends generated audio to your relay endpoint.
+
 1. Keep `SONOS_RELAY_URL` pointed at the current primary relay, or set `SONOS_RELAY_PI_URL` if you want a clearer LAN/Pi-specific alias.
 2. Set `SONOS_RELAY_FALLBACK_URL` to the secondary relay that should receive traffic if the primary fails.
 3. Set `SONOS_RELAY_AUTH_BEARER` if your relay requires bearer auth.
 4. Adjust `SONOS_RELAY_TIMEOUT_MS` to control how long each relay attempt can take before failover.
 5. Verify both endpoints with `GET /api/sonos/relay/health` before moving production traffic.
+
+Relay implementation guidance:
+
+- Required behavior: expose an HTTP POST endpoint that accepts the JSON payload shown in [Sonos relay payload contract](#sonos-relay-payload-contract), then forward `audioBase64` to the target Sonos room.
+- Reference project: `jishi/node-sonos-http-api` is a common base for Sonos control; add a small adapter route that matches this app's payload contract.
 
 The server treats `SONOS_RELAY_PI_URL` as an alias for the primary relay URL. If both are set, `SONOS_RELAY_URL` wins.
 
@@ -352,6 +441,8 @@ faster-whisper options:
 
 Sonos relay options:
 
+Use these only when you run an external Sonos relay service:
+
 - `SONOS_RELAY_URL` (primary relay endpoint)
 - `SONOS_RELAY_PI_URL` (alias for primary LAN relay endpoint)
 - `SONOS_RELAY_FALLBACK_URL` (optional secondary relay endpoint)
@@ -399,6 +490,8 @@ Desktop client options:
 - `VOICE_CLIENT_HOTKEY_MODIFIERS`
 
 ## Sonos relay payload contract
+
+Sonos support is optional. When enabled, this app POSTs audio to a separate relay service; it does not talk to Sonos devices directly.
 
 When `SONOS_RELAY_URL` is set, each voice turn sends this JSON payload to the relay:
 
