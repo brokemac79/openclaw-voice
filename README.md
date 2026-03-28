@@ -52,7 +52,7 @@ Node requirement: `>=20`.
 4. Fill required `.env` values:
 
    - `VOICE_API_BEARER_TOKEN`
-   - `OPENCLAW_URL`
+   - `OPENCLAW_URL` (must be an `http://` or `https://` endpoint; do not use `ws://` or `wss://`)
 
 5. Start server:
 
@@ -255,13 +255,32 @@ Ambient mode still keeps manual Enter-triggered recording available in the termi
 
 Use Piper when you want local speech synthesis or a fallback when Edge TTS is unavailable.
 
-1. Install the Piper CLI and download a voice model on the machine running the server.
-2. Set `TTS_PROVIDER=piper` to force Piper, or set `TTS_PROVIDER=edge` plus `TTS_FALLBACK_PROVIDER=piper` to keep Edge as the first choice.
-3. Set `PIPER_MODEL_PATH` to the absolute path of the downloaded `.onnx` voice model.
-4. Optional: set `PIPER_BIN` if the executable is not available as `piper` on your `PATH`.
-5. Optional: tune `PIPER_SPEAKER_ID`, `PIPER_LENGTH_SCALE`, `PIPER_NOISE_SCALE`, `PIPER_NOISE_W`, and `PIPER_SENTENCE_SILENCE` for your chosen voice.
+1. Install Piper from the official release source: <https://github.com/rhasspy/piper/releases>.
+2. Download a voice model (`.onnx`) from Piper voices (for example: <https://huggingface.co/rhasspy/piper-voices>). Typical model filenames look like `en_US-lessac-medium.onnx`.
+3. Set provider + model variables:
 
-Important: if Piper is your primary provider, or your Edge provider falls back to Piper, the service needs a valid `PIPER_MODEL_PATH` before it can synthesize responses.
+   ```bash
+   TTS_PROVIDER=piper
+   PIPER_BIN=/usr/local/bin/piper
+   PIPER_MODEL_PATH=/opt/piper/en_US-lessac-medium.onnx
+   ```
+
+   Notes:
+
+   - This repo uses `PIPER_BIN` for the executable path (same idea as `PIPER_EXECUTABLE` in some Piper guides).
+   - If you prefer Edge first, keep `TTS_PROVIDER=edge` and set `TTS_FALLBACK_PROVIDER=piper`.
+
+4. Optional: tune `PIPER_SPEAKER_ID`, `PIPER_LENGTH_SCALE`, `PIPER_NOISE_SCALE`, `PIPER_NOISE_W`, and `PIPER_SENTENCE_SILENCE` for your chosen voice.
+5. Run a smoke test directly against Piper:
+
+   ```bash
+   echo "Piper smoke test" | "$PIPER_BIN" --model "$PIPER_MODEL_PATH" --output_file /tmp/piper-smoke.wav
+   ls -lh /tmp/piper-smoke.wav
+   ```
+
+   If `/tmp/piper-smoke.wav` exists and is non-zero size, Piper + model path are valid.
+
+Important: Piper outputs WAV (`audio/wav`). Edge TTS outputs MP3 (`audio/mpeg`). If Piper is your primary provider, or your Edge provider falls back to Piper, the service needs a valid `PIPER_MODEL_PATH` before it can synthesize responses.
 
 ### Sonos Pi relay migration
 
@@ -288,6 +307,46 @@ OpenClaw options:
 - `OPENCLAW_METHOD` (default `POST`)
 - `OPENCLAW_INPUT_FIELD` (default `input`)
 - `OPENCLAW_OUTPUT_FIELD` (default `response`)
+
+### OpenClaw upstream endpoint contract
+
+`OPENCLAW_URL` must point at an HTTP API endpoint that accepts JSON requests and returns a response body the voice server can read.
+
+- Use `http://` or `https://` only.
+- Do not use `ws://` or `wss://`.
+
+Default request body sent to your upstream endpoint:
+
+```json
+{
+  "input": "hello",
+  "sessionId": "Kitchen"
+}
+```
+
+Default response body expected from your upstream endpoint:
+
+```json
+{
+  "response": "Hi there"
+}
+```
+
+Field mapping behavior:
+
+- `OPENCLAW_INPUT_FIELD` changes the outgoing input key.
+- `OPENCLAW_OUTPUT_FIELD` changes the response key read from JSON replies.
+
+Concrete examples:
+
+- If `OPENCLAW_INPUT_FIELD=message`, outgoing JSON becomes `{"message":"hello","sessionId":"Kitchen"}`.
+- If `OPENCLAW_OUTPUT_FIELD=reply`, incoming JSON should look like `{"reply":"Hi there"}`.
+
+Troubleshooting wrong endpoint errors:
+
+- `404` usually means the URL path is wrong (for example pointing at `/` instead of `/api/chat`).
+- `405` usually means the endpoint does not allow the configured method (default is `POST`).
+- HTML responses (for example `<!doctype html>`) usually mean `OPENCLAW_URL` is pointed at a web page instead of the JSON API endpoint.
 
 faster-whisper options:
 
