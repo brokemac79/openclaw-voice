@@ -21,6 +21,8 @@ Best experience:
 - Edge (desktop)
 - Safari (iOS 16.4+ and macOS Safari 16.4+)
 
+Safari 16.4+ is supported with automatic audio MIME fallback handling during upload.
+
 Also supported:
 
 - Firefox current version (desktop)

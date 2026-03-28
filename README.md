@@ -78,6 +78,8 @@ VOICE_API_BEARER_TOKEN="replace-with-browser-client-token"
 
 `OPENCLAW_URL` should point at the upstream HTTP endpoint this server can `POST` JSON to. Do not use an OpenClaw WebSocket URL such as `ws://` or `wss://` here.
 
+The default `.env.example` value is `http://127.0.0.1:3000/api/chat` for local setups. In hosted environments, set `OPENCLAW_URL` to your upstream service's full HTTPS chat endpoint.
+
 ## UX notes (Phase 1 usability pass)
 
 - Settings are persisted in browser local storage so users do not need to edit `.env` files.
@@ -90,6 +92,7 @@ VOICE_API_BEARER_TOKEN="replace-with-browser-client-token"
 
 - Auth: `Authorization: Bearer <VOICE_API_BEARER_TOKEN>`
 - Content type: `multipart/form-data`
+- Upload handling: `multer@2.x` with an in-memory `audio` file limit of 15 MB per request
 - Fields:
   - `audio` (required): recorded audio blob
   - `sessionId` (optional): conversation/session id
@@ -109,6 +112,7 @@ Response payload:
 
 - Run behind HTTPS reverse proxy (nginx or Caddy)
 - Keep `VOICE_API_BEARER_TOKEN` and optional `OPENCLAW_AUTH_BEARER` secret and rotated
+- Ensure reverse-proxy request body limits allow at least 15 MB for audio uploads
 - Restrict allowed browser origins at the reverse proxy if only one UI origin should call it
 - Use a process manager (systemd or pm2) for restart-on-crash and boot persistence
 
