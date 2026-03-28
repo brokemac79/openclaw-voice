@@ -20,7 +20,14 @@ Browser push-to-talk client + Node endpoint for this pipeline:
 
 - See `docs/user-guide.md` for the plain-language setup and usage guide.
 
+## Operator vs end-user docs
+
+- Operators/admins: use this `README.md` for install, env vars, deploy, and service operations.
+- End users: use `docs/user-guide.md` for browser setup and push-to-talk usage only.
+
 ## Quick start
+
+Node.js requirement: `>=20` (see `package.json` engines).
 
 1. Install dependencies:
 
@@ -34,11 +41,15 @@ Browser push-to-talk client + Node endpoint for this pipeline:
    cp .env.example .env
    ```
 
-   Fill in at least:
+    Fill in at least:
 
-   - `OPENAI_API_KEY`
-   - `VOICE_API_BEARER_TOKEN`
-   - `OPENCLAW_URL`
+    - `OPENAI_API_KEY`
+    - `VOICE_API_BEARER_TOKEN`
+    - `OPENCLAW_URL`
+
+    Optional but common for production OpenClaw services:
+
+    - `OPENCLAW_AUTH_BEARER` (sent as `Authorization: Bearer <token>` to your upstream OpenClaw endpoint)
 
 3. Run locally:
 
@@ -47,6 +58,23 @@ Browser push-to-talk client + Node endpoint for this pipeline:
    ```
 
 4. Open `http://localhost:8787`, fill in Settings (service URL + access token), click **Save Settings**, then hold the button to talk.
+
+## Environment reference
+
+- `VOICE_API_BEARER_TOKEN`: required; browser clients must send this token to `/api/voice/turn`.
+- `OPENCLAW_URL`: required; full upstream URL for the OpenClaw chat endpoint.
+- `OPENCLAW_AUTH_BEARER`: optional; bearer token forwarded to OpenClaw when your upstream requires auth.
+- `OPENCLAW_METHOD`: optional; defaults to `POST`.
+- `OPENCLAW_INPUT_FIELD`: optional; defaults to `input`.
+- `OPENCLAW_OUTPUT_FIELD`: optional; defaults to `response`.
+
+Example `.env` snippet:
+
+```bash
+OPENCLAW_URL="https://openclaw.example.com/api/chat"
+OPENCLAW_AUTH_BEARER="replace-with-upstream-openclaw-token"
+VOICE_API_BEARER_TOKEN="replace-with-browser-client-token"
+```
 
 ## UX notes (Phase 1 usability pass)
 
@@ -77,10 +105,64 @@ Response payload:
 
 ## Deploy notes (VPS)
 
-- Run behind HTTPS (nginx/Caddy reverse proxy)
-- Keep `VOICE_API_BEARER_TOKEN` secret and rotate regularly
-- Restrict CORS/origin at the reverse proxy if only one UI origin should call it
-- Add process manager (systemd/pm2) for auto-restart
+- Run behind HTTPS reverse proxy (nginx or Caddy)
+- Keep `VOICE_API_BEARER_TOKEN` and optional `OPENCLAW_AUTH_BEARER` secret and rotated
+- Restrict allowed browser origins at the reverse proxy if only one UI origin should call it
+- Use a process manager (systemd or pm2) for restart-on-crash and boot persistence
+
+### nginx reverse proxy example
+
+```nginx
+server {
+  listen 443 ssl;
+  server_name voice.example.com;
+
+  location / {
+    proxy_pass http://127.0.0.1:8787;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+}
+```
+
+### Caddy reverse proxy example
+
+```caddy
+voice.example.com {
+  reverse_proxy 127.0.0.1:8787
+}
+```
+
+### systemd service example
+
+```ini
+[Unit]
+Description=openclaw-voice
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/openclaw-voice
+EnvironmentFile=/opt/openclaw-voice/.env
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=3
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### pm2 example
+
+```bash
+pm2 start npm --name openclaw-voice -- start
+pm2 save
+pm2 startup
+```
 
 ## Known MVP limits
 

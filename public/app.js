@@ -27,6 +27,14 @@ const mediaState = {
   isRecording: false
 };
 
+const RECORDER_FORMATS = [
+  { mimeType: "audio/webm;codecs=opus", extension: "webm" },
+  { mimeType: "audio/webm", extension: "webm" },
+  { mimeType: "audio/mp4;codecs=mp4a.40.2", extension: "m4a" },
+  { mimeType: "audio/mp4", extension: "m4a" },
+  { mimeType: "audio/aac", extension: "aac" }
+];
+
 function setStatus(message, state = "default") {
   statusEl.textContent = message;
   statusEl.classList.remove("error", "ok");
@@ -49,6 +57,10 @@ function normalizeApiPath(value) {
     return "/api/voice/turn";
   }
   return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+}
+
+function isLocalHttpUrl(parsedUrl) {
+  return parsedUrl.protocol === "http:" && ["localhost", "127.0.0.1", "::1", "[::1]"].includes(parsedUrl.hostname);
 }
 
 function updateInputsFromSettings() {
@@ -81,7 +93,12 @@ function saveSettings() {
   }
 
   if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-    setStatus("Service URL must start with http:// or https://.", "error");
+    setStatus("Service URL must start with https:// (or http://localhost / http://127.0.0.1 for local development).", "error");
+    return;
+  }
+
+  if (parsedUrl.protocol === "http:" && !isLocalHttpUrl(parsedUrl)) {
+    setStatus("Service URL must use https:// for non-local hosts. Use http://localhost or http://127.0.0.1 only for local development.", "error");
     return;
   }
 
@@ -153,6 +170,11 @@ async function ensureMic() {
     return;
   }
 
+  if (!window.MediaRecorder) {
+    setStatus("This browser does not support recording audio.", "error");
+    return;
+  }
+
   try {
     mediaState.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     if (settings.token) {
@@ -166,7 +188,41 @@ async function ensureMic() {
   }
 }
 
-async function postVoiceTurn(blob) {
+function pickRecordingFormat() {
+  if (!window.MediaRecorder?.isTypeSupported) {
+    return { mimeType: "", extension: "webm" };
+  }
+
+  const supported = RECORDER_FORMATS.find((format) => window.MediaRecorder.isTypeSupported(format.mimeType));
+  if (supported) {
+    return supported;
+  }
+
+  return { mimeType: "", extension: "webm" };
+}
+
+function extensionFromMimeType(mimeType, fallbackExtension) {
+  if (!mimeType) {
+    return fallbackExtension;
+  }
+
+  if (mimeType.includes("mp4") || mimeType.includes("m4a")) {
+    return "m4a";
+  }
+  if (mimeType.includes("aac")) {
+    return "aac";
+  }
+  if (mimeType.includes("ogg")) {
+    return "ogg";
+  }
+  if (mimeType.includes("webm")) {
+    return "webm";
+  }
+
+  return fallbackExtension;
+}
+
+async function postVoiceTurn(blob, filename) {
   const token = settings.token;
   const sessionId = settings.sessionId;
 
@@ -178,7 +234,7 @@ async function postVoiceTurn(blob) {
   setStatus("Sending your audio. Waiting for assistant reply...");
 
   const form = new FormData();
-  form.append("audio", blob, "recording.webm");
+  form.append("audio", blob, filename);
   if (sessionId) {
     form.append("sessionId", sessionId);
   }
@@ -218,9 +274,14 @@ function startRecording() {
     return;
   }
 
+  const format = pickRecordingFormat();
+  const recorderOptions = format.mimeType ? { mimeType: format.mimeType } : undefined;
+
   mediaState.chunks = [];
   mediaState.isRecording = true;
-  mediaState.recorder = new MediaRecorder(mediaState.stream, { mimeType: "audio/webm" });
+  mediaState.recorder = recorderOptions
+    ? new MediaRecorder(mediaState.stream, recorderOptions)
+    : new MediaRecorder(mediaState.stream);
 
   mediaState.recorder.addEventListener("dataavailable", (event) => {
     if (event.data.size > 0) {
@@ -232,9 +293,11 @@ function startRecording() {
     mediaState.isRecording = false;
     recordButton.classList.remove("is-recording");
 
-    const blob = new Blob(mediaState.chunks, { type: "audio/webm" });
+    const recordedMimeType = format.mimeType || mediaState.recorder.mimeType || "audio/webm";
+    const blob = new Blob(mediaState.chunks, { type: recordedMimeType });
+    const fileExtension = extensionFromMimeType(recordedMimeType, format.extension);
     try {
-      await postVoiceTurn(blob);
+      await postVoiceTurn(blob, `recording.${fileExtension}`);
     } catch (error) {
       setStatus(`Request failed: ${error.message}. Check URL/token and try again.`, "error");
     }

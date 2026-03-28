@@ -4,12 +4,28 @@ OpenClaw Voice lets you press a button, speak naturally, and hear OpenClaw answe
 
 This Phase 1 version is designed for simple push-to-talk use in a web browser. You hold the talk button while speaking, release it when you finish, and wait a moment for the spoken reply.
 
+If you are deploying or administering the service, use `README.md` instead. This guide is for end users only.
+
 ## What You Need Before You Start
 
 - A phone, tablet, or computer with a microphone
 - A supported web browser with microphone access enabled
 - Your OpenClaw Voice web link
 - Your voice access token from the person who set up the system
+
+## Browser Compatibility
+
+Best experience:
+
+- Chrome (desktop + Android)
+- Edge (desktop)
+- Safari (iOS 16.4+ and macOS Safari 16.4+)
+
+Also supported:
+
+- Firefox current version (desktop)
+
+If your browser is older and recording does not work, update the browser first.
 
 ## First-Time Setup
 
@@ -75,6 +91,8 @@ Try this:
 3. Wait a few seconds and try again.
 4. Contact your administrator if the problem keeps happening.
 
+If you can share technical details with your administrator, include the exact error text shown on screen. Common server-side messages are `Voice pipeline failed`, `OpenClaw request failed (...)`, and `Whisper request failed (...)`.
+
 ### The reply text appears, but I do not hear audio
 
 - Make sure your device volume is on.
@@ -87,6 +105,14 @@ Try this:
 - Move closer to the microphone.
 - Reduce background noise.
 - Try again using a shorter sentence.
+
+### I saved settings, but they disappear later
+
+Settings are stored in your browser's local storage.
+
+- Avoid private/incognito windows for daily use.
+- Do not clear site data for the OpenClaw Voice page.
+- If you changed browsers/devices, enter settings again on that browser/device.
 
 ## FAQ
 
