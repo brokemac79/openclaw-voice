@@ -491,7 +491,7 @@ app.post("/api/voice/turn", requireBearer, upload.single("audio"), async (req, r
     const sonos = await sendAudioToSonosRelay(
       synthesis.audio,
       spokenResponse,
-      req.body?.sonosRoom || req.body?.sessionId,
+      req.body?.sonosRoom,
       synthesis.audioMimeType
     );
 

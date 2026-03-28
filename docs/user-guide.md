@@ -43,10 +43,11 @@ If your browser is older and recording does not work, update the browser first.
 2. When your browser asks for microphone access, choose **Allow**.
 3. In the **Settings** card at the top of the page, check that **Voice Service URL** matches the service address you were given.
 4. In **Access Token**, paste the voice access token you were given.
-5. If your household or project uses a room label, enter it in **Room Name (optional)**. Otherwise, leave it blank.
-6. Click **Save Settings**.
-7. Check the saved summary under the Settings card. It should show your service URL, room name if used, and a masked token.
-8. Wait for the status message to say the app is ready.
+5. If your setup uses OpenClaw conversation tracking, enter a value in **Session ID (optional)**.
+6. If your household or project uses Sonos playback, enter the speaker in **Sonos Room (optional)**.
+7. Click **Save Settings**.
+8. Check the saved summary under the Settings card. It should show your service URL, session ID and room if used, and a masked token.
+9. Wait for the status message to say the app is ready.
 
 ### Desktop mode
 
@@ -115,7 +116,7 @@ Use these only if replies should play through Sonos:
 - `SONOS_RELAY_TIMEOUT_MS`: timeout per relay attempt before trying the fallback relay
 - `SONOS_ROOM_DEFAULT`: fallback room name when a browser or desktop client does not send one
 
-If a household uses more than one Sonos room, users can enter a room name in the browser settings or the desktop client can send `VOICE_CLIENT_SONOS_ROOM`.
+If a household uses more than one Sonos room, users can enter a room name in the browser setting **Sonos Room (optional)** or the desktop client can send `VOICE_CLIENT_SONOS_ROOM`.
 
 ### Desktop client settings
 
@@ -253,9 +254,9 @@ Usually no. The main experience still runs in a browser, so most people only nee
 
 Yes. This version uses push-to-talk. Hold the button while speaking, then release it to send your request.
 
-### What does Room Name mean?
+### What do Session ID and Sonos Room mean?
 
-It is an optional label that can help keep a conversation tied to a room, device, or user flow. If you were not told to use one, you can leave it blank.
+**Session ID** is an optional conversation context label sent to OpenClaw. **Sonos Room** is the optional speaker target used for Sonos playback. If you were not told to use either value, you can leave both blank.
 
 ### Can I use the keyboard instead of pressing the button?
 
