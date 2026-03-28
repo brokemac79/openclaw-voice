@@ -43,10 +43,10 @@ Node requirement: `>=20`.
    cp .env.example .env
    ```
 
-3. Install Python dependencies for local faster-whisper:
+3. Complete the local faster-whisper Python setup:
 
    ```bash
-   python3 -m pip install faster-whisper
+   # See the "faster-whisper Python setup (beginner-friendly)" section below.
    ```
 
 4. Fill required `.env` values:
@@ -61,6 +61,95 @@ Node requirement: `>=20`.
    ```
 
 6. Open `http://localhost:8787` and use the web client.
+
+## faster-whisper Python setup (beginner-friendly)
+
+If you have never installed Python tooling before, follow these steps exactly on the same machine that runs the Node server.
+
+### 1) Install Python 3 and pip
+
+- Python download page: <https://www.python.org/downloads/>
+- pip installation/upgrade docs: <https://pip.pypa.io/en/stable/installation/>
+
+Verify both commands work:
+
+```bash
+python3 --version
+python3 -m pip --version
+```
+
+If `python3 -m pip --version` fails, install pip first, then re-run the check.
+
+### 2) Create and activate a virtual environment (recommended)
+
+From the project root:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
+```
+
+Why: this keeps Python packages for this project isolated from system-wide packages.
+
+### 3) Install ffmpeg (required for many audio files)
+
+`faster-whisper` relies on ffmpeg for decoding common input formats.
+
+- macOS (Homebrew): `brew install ffmpeg`
+- Ubuntu/Debian: `sudo apt-get update && sudo apt-get install -y ffmpeg`
+- Fedora/RHEL: `sudo dnf install -y ffmpeg`
+- Windows (Chocolatey): `choco install ffmpeg -y`
+
+Verify it is available:
+
+```bash
+ffmpeg -version
+```
+
+### 4) Install faster-whisper
+
+```bash
+python3 -m pip install faster-whisper
+```
+
+### 5) Expect model download on first transcription
+
+The first transcription downloads the selected model and caches it on disk.
+
+- `tiny.en`: roughly 75 MB
+- `base.en`: roughly 140 MB (default)
+- `small.en`: roughly 460 MB
+
+The first run can take longer depending on your network speed.
+
+### 6) Recommended CPU-only defaults
+
+For most CPU-only machines, start with:
+
+```env
+FASTER_WHISPER_MODEL=base.en
+FASTER_WHISPER_DEVICE=cpu
+FASTER_WHISPER_COMPUTE_TYPE=int8
+```
+
+If your machine is very resource-constrained, try `FASTER_WHISPER_MODEL=tiny.en` for faster/cheaper transcription with lower accuracy.
+
+### 7) Run a standalone smoke test
+
+If you do not already have `test.wav`, create a short sample file:
+
+```bash
+ffmpeg -f lavfi -i "anullsrc=r=16000:cl=mono" -t 2 test.wav
+```
+
+Then run:
+
+```bash
+python3 scripts/faster_whisper_transcribe.py --audio-path test.wav --model base.en
+```
+
+Expected result: JSON printed to stdout (with `text`, `language`, and `duration`) and no Python traceback.
 
 ## Desktop client prerequisites
 
