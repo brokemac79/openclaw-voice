@@ -109,11 +109,16 @@ These settings control local speech transcription:
 
 Use these only if replies should play through Sonos:
 
+- Sonos is optional and requires a separate relay service on your LAN
+- OpenClaw Voice does not include that relay service; it sends generated audio to the configured relay URL
+
 - `SONOS_RELAY_URL` or `SONOS_RELAY_PI_URL`: primary local relay address that accepts generated audio
 - `SONOS_RELAY_FALLBACK_URL`: optional secondary relay used during migration/failover
 - `SONOS_RELAY_AUTH_BEARER`: optional relay bearer token
 - `SONOS_RELAY_TIMEOUT_MS`: timeout per relay attempt before trying the fallback relay
 - `SONOS_ROOM_DEFAULT`: fallback room name when a browser or desktop client does not send one
+
+If your team needs a starting point for relay implementation, a common base is `jishi/node-sonos-http-api` with a small adapter route that accepts this project's relay payload (`room`, `text`, `audioMimeType`, `audioBase64`).
 
 If a household uses more than one Sonos room, users can enter a room name in the browser settings or the desktop client can send `VOICE_CLIENT_SONOS_ROOM`.
 
@@ -217,7 +222,7 @@ If you can share technical details with your administrator, include the exact er
 - Check that the saved room name matches the Sonos room exactly.
 - If your setup uses a shared default room, ask your administrator which room is configured.
 - If the desktop client is sending audio to Sonos, confirm `VOICE_CLIENT_SONOS_ROOM` was set correctly.
-- Ask your administrator to check whether the Sonos relay service is online.
+- Ask your administrator to check whether the external Sonos relay service is online and reachable from OpenClaw Voice.
 
 ### The desktop client does not respond
 
