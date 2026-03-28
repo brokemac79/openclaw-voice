@@ -10,11 +10,15 @@ Browser push-to-talk client + Node endpoint for this pipeline:
 
 ## What this MVP includes
 
-- PWA-style browser UI with push-to-talk interaction
+- PWA-style browser UI with one-screen setup and push-to-talk interaction
 - Bearer-token authentication on `/api/voice/turn`
 - Whisper API transcription integration
 - OpenClaw HTTP endpoint integration
 - Edge TTS speech synthesis and playback
+
+## End-user documentation
+
+- See `docs/user-guide.md` for the plain-language setup and usage guide.
 
 ## Quick start
 
@@ -42,7 +46,13 @@ Browser push-to-talk client + Node endpoint for this pipeline:
    npm run dev
    ```
 
-4. Open `http://localhost:8787`, paste the bearer token, and hold the button to talk.
+4. Open `http://localhost:8787`, fill in Settings (service URL + access token), click **Save Settings**, then hold the button to talk.
+
+## UX notes (Phase 1 usability pass)
+
+- Settings are persisted in browser local storage so users do not need to edit `.env` files.
+- Basic fields are kept simple (`Voice Service URL`, `Access Token`, `Room Name`), with `API Path` under **Advanced settings**.
+- The talk button uses pointer events for mouse/touch and is intentionally large for mobile/iOS use.
 
 ## API contract
 

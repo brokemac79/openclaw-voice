@@ -1,52 +1,181 @@
+const STORAGE_KEY = "openclawVoiceSettingsV1";
+
+const serviceUrlInput = document.querySelector("#serviceUrl");
 const tokenInput = document.querySelector("#token");
 const sessionIdInput = document.querySelector("#sessionId");
+const apiPathInput = document.querySelector("#apiPath");
+const saveSettingsButton = document.querySelector("#saveSettings");
+const clearSettingsButton = document.querySelector("#clearSettings");
+const settingsSummaryEl = document.querySelector("#settingsSummary");
 const recordButton = document.querySelector("#recordButton");
 const statusEl = document.querySelector("#status");
 const transcriptionEl = document.querySelector("#transcription");
 const responseEl = document.querySelector("#response");
 const player = document.querySelector("#player");
 
+const settings = {
+  serviceUrl: window.location.origin,
+  token: "",
+  sessionId: "",
+  apiPath: "/api/voice/turn"
+};
+
 const mediaState = {
   stream: null,
   recorder: null,
-  chunks: []
+  chunks: [],
+  isRecording: false
 };
 
-function setStatus(message, isError = false) {
+function setStatus(message, state = "default") {
   statusEl.textContent = message;
-  statusEl.classList.toggle("error", isError);
+  statusEl.classList.remove("error", "ok");
+  if (state === "error") {
+    statusEl.classList.add("error");
+  }
+  if (state === "ok") {
+    statusEl.classList.add("ok");
+  }
 }
 
 function setReadyState() {
-  const tokenPresent = tokenInput.value.trim().length > 0;
+  const tokenPresent = settings.token.length > 0;
   recordButton.disabled = !mediaState.stream || !tokenPresent;
+}
+
+function normalizeApiPath(value) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "/api/voice/turn";
+  }
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+}
+
+function updateInputsFromSettings() {
+  serviceUrlInput.value = settings.serviceUrl;
+  tokenInput.value = settings.token;
+  sessionIdInput.value = settings.sessionId;
+  apiPathInput.value = settings.apiPath;
+}
+
+function updateSettingsSummary() {
+  const maskedToken = settings.token ? `${"*".repeat(Math.min(settings.token.length, 8))}` : "not set";
+  const room = settings.sessionId || "not set";
+  settingsSummaryEl.textContent = `Server: ${settings.serviceUrl} | Token: ${maskedToken} | Room: ${room}`;
+}
+
+function saveSettings() {
+  const next = {
+    serviceUrl: serviceUrlInput.value.trim() || window.location.origin,
+    token: tokenInput.value.trim(),
+    sessionId: sessionIdInput.value.trim(),
+    apiPath: normalizeApiPath(apiPathInput.value)
+  };
+
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(next.serviceUrl);
+  } catch {
+    setStatus("Please enter a valid service URL (example: https://voice.example.com).", "error");
+    return;
+  }
+
+  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+    setStatus("Service URL must start with http:// or https://.", "error");
+    return;
+  }
+
+  Object.assign(settings, {
+    serviceUrl: parsedUrl.origin,
+    token: next.token,
+    sessionId: next.sessionId,
+    apiPath: next.apiPath
+  });
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  updateInputsFromSettings();
+  updateSettingsSummary();
+  setReadyState();
+
+  if (!settings.token) {
+    setStatus("Settings saved. Add your access token to enable recording.");
+    return;
+  }
+
+  setStatus("Settings saved. You can now hold the button to talk.", "ok");
+}
+
+function clearSettings() {
+  localStorage.removeItem(STORAGE_KEY);
+  Object.assign(settings, {
+    serviceUrl: window.location.origin,
+    token: "",
+    sessionId: "",
+    apiPath: "/api/voice/turn"
+  });
+  updateInputsFromSettings();
+  updateSettingsSummary();
+  setReadyState();
+  setStatus("Saved settings cleared. Enter your details and press Save Settings.");
+}
+
+function loadSettings() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    updateInputsFromSettings();
+    updateSettingsSummary();
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    Object.assign(settings, {
+      serviceUrl: typeof parsed.serviceUrl === "string" ? parsed.serviceUrl : window.location.origin,
+      token: typeof parsed.token === "string" ? parsed.token : "",
+      sessionId: typeof parsed.sessionId === "string" ? parsed.sessionId : "",
+      apiPath: typeof parsed.apiPath === "string" ? normalizeApiPath(parsed.apiPath) : "/api/voice/turn"
+    });
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
+  updateInputsFromSettings();
+  updateSettingsSummary();
+}
+
+function getVoiceTurnEndpoint() {
+  return new URL(settings.apiPath, settings.serviceUrl).toString();
 }
 
 async function ensureMic() {
   if (!navigator.mediaDevices?.getUserMedia) {
-    setStatus("This browser does not support microphone capture.", true);
+    setStatus("This browser does not support microphone access.", "error");
     return;
   }
 
   try {
     mediaState.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    setStatus("Ready. Hold button to record.");
+    if (settings.token) {
+      setStatus("Microphone ready. Hold the button to record.", "ok");
+    } else {
+      setStatus("Microphone ready. Save your settings with a token to continue.");
+    }
     setReadyState();
   } catch (error) {
-    setStatus(`Microphone permission denied: ${error.message}`, true);
+    setStatus(`Microphone permission denied: ${error.message}`, "error");
   }
 }
 
 async function postVoiceTurn(blob) {
-  const token = tokenInput.value.trim();
-  const sessionId = sessionIdInput.value.trim();
+  const token = settings.token;
+  const sessionId = settings.sessionId;
 
   if (!token) {
-    setStatus("Missing API bearer token.", true);
+    setStatus("Please save an access token before recording.", "error");
     return;
   }
 
-  setStatus("Uploading audio and waiting for response...");
+  setStatus("Sending your audio. Waiting for assistant reply...");
 
   const form = new FormData();
   form.append("audio", blob, "recording.webm");
@@ -54,7 +183,7 @@ async function postVoiceTurn(blob) {
     form.append("sessionId", sessionId);
   }
 
-  const response = await fetch("/api/voice/turn", {
+  const response = await fetch(getVoiceTurnEndpoint(), {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`
@@ -74,17 +203,23 @@ async function postVoiceTurn(blob) {
 
   const src = `data:${data.audioMimeType};base64,${data.audioBase64}`;
   player.src = src;
-  await player.play();
+  try {
+    await player.play();
+  } catch {
+    setStatus("Reply received. Tap play on the audio controls to hear it.");
+    return;
+  }
 
-  setStatus("Done. Ready for next turn.");
+  setStatus("Reply ready. You can ask another question.", "ok");
 }
 
 function startRecording() {
-  if (!mediaState.stream) {
+  if (!mediaState.stream || mediaState.isRecording || recordButton.disabled) {
     return;
   }
 
   mediaState.chunks = [];
+  mediaState.isRecording = true;
   mediaState.recorder = new MediaRecorder(mediaState.stream, { mimeType: "audio/webm" });
 
   mediaState.recorder.addEventListener("dataavailable", (event) => {
@@ -94,40 +229,74 @@ function startRecording() {
   });
 
   mediaState.recorder.addEventListener("stop", async () => {
+    mediaState.isRecording = false;
+    recordButton.classList.remove("is-recording");
+
     const blob = new Blob(mediaState.chunks, { type: "audio/webm" });
     try {
       await postVoiceTurn(blob);
     } catch (error) {
-      setStatus(`Voice request failed: ${error.message}`, true);
+      setStatus(`Request failed: ${error.message}. Check URL/token and try again.`, "error");
     }
   });
 
   mediaState.recorder.start();
-  setStatus("Recording... release to send");
+  recordButton.classList.add("is-recording");
+  setStatus("Recording now... release the button to send audio.");
 }
 
 function stopRecording() {
+  if (!mediaState.isRecording) {
+    return;
+  }
+
   if (mediaState.recorder && mediaState.recorder.state !== "inactive") {
     mediaState.recorder.stop();
   }
 }
 
-tokenInput.addEventListener("input", setReadyState);
-
-recordButton.addEventListener("mousedown", startRecording);
-recordButton.addEventListener("mouseup", stopRecording);
-recordButton.addEventListener("mouseleave", stopRecording);
-recordButton.addEventListener("touchstart", (event) => {
+recordButton.addEventListener("pointerdown", (event) => {
   event.preventDefault();
+  recordButton.setPointerCapture(event.pointerId);
   startRecording();
 });
-recordButton.addEventListener("touchend", (event) => {
+recordButton.addEventListener("pointerup", (event) => {
   event.preventDefault();
   stopRecording();
 });
+recordButton.addEventListener("pointercancel", (event) => {
+  event.preventDefault();
+  stopRecording();
+});
+recordButton.addEventListener("pointerleave", (event) => {
+  event.preventDefault();
+  stopRecording();
+});
+
+recordButton.addEventListener("keydown", (event) => {
+  if (event.repeat) {
+    return;
+  }
+  if (event.key === " " || event.key === "Enter") {
+    event.preventDefault();
+    startRecording();
+  }
+});
+
+recordButton.addEventListener("keyup", (event) => {
+  if (event.key === " " || event.key === "Enter") {
+    event.preventDefault();
+    stopRecording();
+  }
+});
+
+saveSettingsButton.addEventListener("click", saveSettings);
+clearSettingsButton.addEventListener("click", clearSettings);
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
 
+loadSettings();
+setReadyState();
 ensureMic();

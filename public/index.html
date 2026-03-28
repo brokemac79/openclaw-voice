@@ -3,16 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#102a43" />
-    <title>OpenClaw Voice MVP</title>
+    <meta name="theme-color" content="#0f4a7a" />
+    <title>OpenClaw Voice Assistant</title>
     <link rel="manifest" href="/manifest.webmanifest" />
     <style>
       :root {
-        --ink: #0b1827;
-        --panel: #f5f7fb;
-        --accent: #2f855a;
-        --accent-strong: #276749;
+        --ink: #0b2239;
+        --panel: #f3f8fc;
+        --accent: #0f6aa6;
+        --accent-strong: #0b4f7d;
         --error: #b42318;
+        --ok: #216e39;
       }
 
       * {
@@ -24,17 +25,21 @@
         min-height: 100vh;
         font-family: "Avenir Next", "Segoe UI", sans-serif;
         color: var(--ink);
-        background: radial-gradient(circle at 20% 20%, #e2f3e8 0%, #dbe9f4 40%, #f7f8fb 100%);
+        background: radial-gradient(circle at 10% 15%, #dff2ff 0%, #d9ecfa 40%, #eff8ff 100%);
       }
 
       main {
         width: min(720px, 92vw);
         margin: 3rem auto;
         padding: 1.5rem;
-        background: rgba(255, 255, 255, 0.85);
+        background: rgba(255, 255, 255, 0.92);
         border: 1px solid rgba(16, 42, 67, 0.1);
         border-radius: 16px;
         backdrop-filter: blur(6px);
+      }
+
+      .intro {
+        margin-bottom: 1.25rem;
       }
 
       h1 {
@@ -45,6 +50,12 @@
       p {
         margin: 0.5rem 0 1rem;
         line-height: 1.5;
+      }
+
+      .hint {
+        font-size: 0.9rem;
+        color: #375773;
+        margin-top: -0.35rem;
       }
 
       .row {
@@ -64,6 +75,15 @@
         border-radius: 10px;
         padding: 0.75rem;
         font-size: 0.95rem;
+      }
+
+      details {
+        margin-top: 0.5rem;
+      }
+
+      summary {
+        font-weight: 700;
+        cursor: pointer;
       }
 
       button {
@@ -88,12 +108,55 @@
         cursor: not-allowed;
       }
 
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .button-muted {
+        background: #e9f2f9;
+        color: #13344d;
+      }
+
+      .button-muted:hover {
+        background: #dcecf9;
+      }
+
+      .talk-wrap {
+        display: grid;
+        justify-items: center;
+        gap: 0.7rem;
+        margin-top: 1.25rem;
+      }
+
+      .talk-button {
+        min-width: min(340px, 100%);
+        min-height: 84px;
+        font-size: 1.15rem;
+        letter-spacing: 0.01em;
+      }
+
+      .talk-button.is-recording {
+        background: #b42318;
+      }
+
       .status {
         font-weight: 700;
       }
 
       .status.error {
         color: var(--error);
+      }
+
+      .status.ok {
+        color: var(--ok);
+      }
+
+      .settings-summary {
+        margin: 0.5rem 0 0;
+        font-size: 0.92rem;
+        color: #375773;
       }
 
       .card {
@@ -115,26 +178,58 @@
           margin: 1rem auto;
           padding: 1rem;
         }
+
+        .talk-button {
+          min-height: 96px;
+          font-size: 1.2rem;
+        }
       }
     </style>
   </head>
   <body>
     <main>
-      <h1>OpenClaw Voice (Phase 1 MVP)</h1>
-      <p>Press and hold to record, release to send audio to Whisper -&gt; OpenClaw -&gt; Edge TTS.</p>
+      <h1>OpenClaw Voice Assistant</h1>
+      <p class="intro">Talk naturally to your smart-home assistant. Press and hold the big button, then release to send.</p>
 
-      <div class="row">
-        <label for="token">API Bearer Token</label>
-        <input id="token" type="password" placeholder="Paste VOICE_API_BEARER_TOKEN" autocomplete="off" />
+      <div class="card">
+        <strong>Settings</strong>
+        <p class="hint">Set these once, tap Save, and they stay on this device.</p>
+
+        <div class="row">
+          <label for="serviceUrl">Voice Service URL</label>
+          <input id="serviceUrl" type="url" placeholder="https://voice.yourdomain.com" autocomplete="url" />
+        </div>
+
+        <div class="row">
+          <label for="token">Access Token</label>
+          <input id="token" type="password" placeholder="Paste the token from setup" autocomplete="off" />
+        </div>
+
+        <div class="row">
+          <label for="sessionId">Room Name (optional)</label>
+          <input id="sessionId" type="text" placeholder="Kitchen, Office, Living Room..." autocomplete="off" />
+        </div>
+
+        <details>
+          <summary>Advanced settings</summary>
+          <div class="row">
+            <label for="apiPath">API Path</label>
+            <input id="apiPath" type="text" placeholder="/api/voice/turn" autocomplete="off" />
+          </div>
+        </details>
+
+        <div class="button-row">
+          <button id="saveSettings" type="button">Save Settings</button>
+          <button id="clearSettings" class="button-muted" type="button">Clear Saved Settings</button>
+        </div>
+        <p id="settingsSummary" class="settings-summary">No settings saved yet.</p>
       </div>
 
-      <div class="row">
-        <label for="sessionId">Session ID (optional)</label>
-        <input id="sessionId" type="text" placeholder="living-room" autocomplete="off" />
+      <div class="talk-wrap">
+        <button id="recordButton" class="talk-button" disabled>Hold to Talk</button>
+        <p class="hint">Tip: this also works by pressing and holding Space or Enter on a keyboard.</p>
       </div>
-
-      <button id="recordButton" disabled>Hold to talk</button>
-      <p id="status" class="status">Checking microphone support...</p>
+      <p id="status" class="status" role="status" aria-live="polite">Checking microphone support...</p>
 
       <div class="card">
         <strong>Transcription</strong>
