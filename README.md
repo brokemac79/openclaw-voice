@@ -27,6 +27,33 @@ Voice interface for OpenClaw with:
 
 - See `docs/user-guide.md` for user-focused setup and operation.
 
+## Prerequisites (single checklist)
+
+Use this as the one place to confirm what must be installed before setup.
+
+Core requirements:
+
+- Node.js 20+
+- npm (comes with Node.js)
+- `.env` created from `.env.example`
+- `VOICE_API_BEARER_TOKEN` and `OPENCLAW_URL` configured
+
+Speech pipeline requirements:
+
+- Python 3 + pip
+- `faster-whisper` Python package
+- `ffmpeg` (audio decode dependency used by faster-whisper)
+
+Desktop client recording requirement:
+
+- `sox` installed on the machine running `npm run desktop:client`
+
+Optional features (install only if you use them):
+
+- Piper CLI + downloaded `.onnx` voice model (`PIPER_MODEL_PATH`)
+- Picovoice account + `PORCUPINE_ACCESS_KEY` + keyword `.ppn` file
+- Local Sonos relay service reachable by `SONOS_RELAY_URL` or `SONOS_RELAY_PI_URL`
+
 ## Quick start (server)
 
 Node requirement: `>=20`.
@@ -61,6 +88,62 @@ Node requirement: `>=20`.
    ```
 
 6. Open `http://localhost:8787` and use the web client.
+
+## Verify your setup (before full end-to-end)
+
+Run this checklist in order so each layer is validated before the next one.
+
+1) Service health endpoint:
+
+```bash
+curl http://localhost:8787/health
+```
+
+Expected: `{"ok":true}`
+
+2) Browser microphone capture:
+
+- Open `http://localhost:8787` in your browser.
+- Allow microphone permission when prompted.
+- Hold **Hold to talk**, speak a short phrase, release.
+- Confirm transcription text appears in the UI.
+
+3) OpenClaw upstream connectivity (direct curl):
+
+Use your actual upstream endpoint and payload shape. Example:
+
+```bash
+curl -X POST "$OPENCLAW_URL" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENCLAW_AUTH_BEARER" \
+  -d '{"input":"ping"}'
+```
+
+Expected: a normal OpenClaw response payload (not timeout/auth errors).
+
+4) faster-whisper standalone script:
+
+```bash
+python3 scripts/faster_whisper_transcribe.py --audio-path test.wav --model base.en
+```
+
+Expected: JSON output with fields like `text`, `language`, and `duration`.
+
+5) Sonos relay health (if Sonos is enabled):
+
+```bash
+curl http://localhost:8787/api/sonos/relay/health \
+  -H "Authorization: Bearer <VOICE_API_BEARER_TOKEN>"
+```
+
+Expected: configured relay(s) reported reachable.
+
+6) Desktop client manual-mode verification:
+
+- Set `VOICE_CLIENT_WAKE_MODE=manual` in your desktop client environment.
+- Run `npm run desktop:client`.
+- Press Enter to record a short turn.
+- Confirm transcription + response print in terminal before enabling wake-word mode.
 
 ## Desktop client (persistent process)
 
