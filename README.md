@@ -1,5 +1,7 @@
 # openclaw-voice (Phase 4)
 
+OpenClaw Voice lets you talk to your OpenClaw assistant in plain language and hear a spoken reply from your browser, desktop client, or Sonos setup.
+
 Voice interface for OpenClaw with:
 
 1. browser push-to-talk client
@@ -23,9 +25,36 @@ Voice interface for OpenClaw with:
 - Switchable TTS providers (`TTS_PROVIDER=edge|piper|auto`) with Piper fallback support
 - Dual-relay support for Sonos migration (`SONOS_RELAY_URL` / `SONOS_RELAY_PI_URL` + `SONOS_RELAY_FALLBACK_URL`)
 
+## Start here by audience
+
+- Just use it: `docs/user-guide.md`
+- Host it yourself: `docs/host-it-yourself.md`
+- Desktop client operators: `docs/desktop-client-walkthrough.md`
+- Need every `.env` setting explained: `docs/env-reference.md`
+
+## Choose your setup
+
+Pick the smallest setup that matches what you want to do.
+
+| Setup | Best for | What you need | Start here |
+| --- | --- | --- | --- |
+| Browser-only | Someone who just wants push-to-talk in a web page | Running voice server, browser mic access, token | `docs/user-guide.md` |
+| Browser + local speech | Self-hosters who want speech-to-text on their own machine | Browser-only setup plus Python, `faster-whisper`, `ffmpeg` | `docs/host-it-yourself.md` |
+| Desktop + wake word | Always-on desk or mini-PC setups | Local server plus desktop client, `sox`, optional Porcupine wake word files | `docs/desktop-client-walkthrough.md` |
+| Sonos playback | Homes/offices that want spoken replies on Sonos | Any setup above plus an external Sonos relay service | `docs/user-guide.md` and `docs/env-reference.md` |
+
+## How voice flows
+
+```text
+You speak -> speech-to-text -> OpenClaw -> text-to-speech -> audio reply
+```
+
 ## End-user documentation
 
 - See `docs/user-guide.md` for user-focused setup and operation.
+- See `docs/desktop-client-walkthrough.md` for the desktop client end-to-end flow.
+- See `docs/host-it-yourself.md` for beginner-friendly hosting steps.
+- See `docs/env-reference.md` for a variable-by-variable `.env` guide.
 
 ## Prerequisites (single checklist)
 
@@ -228,6 +257,8 @@ Expected: configured relay(s) reported reachable.
 
 ## Desktop client prerequisites
 
+Advanced / optional: skip this whole section unless you want the always-on desktop client.
+
 Before running `npm run desktop:client`, confirm these requirements.
 
 Important: the desktop client is a Node.js terminal CLI process. It is not a packaged desktop app (for example Electron).
@@ -259,6 +290,8 @@ Set `VOICE_CLIENT_PLAY_COMMAND` only if you want the desktop machine to play gen
 Tip: the reply file is written as `.mp3`, so pick a playback command that supports MP3 on your machine.
 
 ### Porcupine prerequisites (wake word)
+
+Advanced / optional: skip this unless you want hands-free wake word detection.
 
 Wake word mode requires Picovoice setup in addition to npm dependencies.
 
@@ -328,6 +361,8 @@ Ambient mode still keeps manual Enter-triggered recording available in the termi
 
 ### Piper TTS setup
 
+Advanced / optional: skip this unless you want local Piper speech output or a fallback when Edge TTS is unavailable.
+
 Use Piper when you want local speech synthesis or a fallback when Edge TTS is unavailable.
 
 1. Install Piper from the official release source: <https://github.com/rhasspy/piper/releases>.
@@ -359,6 +394,8 @@ Important: Piper outputs WAV (`audio/wav`). Edge TTS outputs MP3 (`audio/mpeg`).
 
 ### Sonos Pi relay migration
 
+Advanced / optional: skip this unless you want replies or alerts to play through Sonos.
+
 Phase 4 supports a gradual relay move without changing clients.
 
 Important: Sonos playback is optional and needs a separate relay service running on your local network. This app does not include built-in Sonos transport; it only sends generated audio to your relay endpoint.
@@ -377,6 +414,8 @@ Relay implementation guidance:
 The server treats `SONOS_RELAY_PI_URL` as an alias for the primary relay URL. If both are set, `SONOS_RELAY_URL` wins.
 
 ## Environment reference
+
+For a beginner-friendly explanation of every variable, where to get it, and realistic example values, see `docs/env-reference.md`.
 
 Required:
 

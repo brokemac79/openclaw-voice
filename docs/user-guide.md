@@ -2,14 +2,26 @@
 
 OpenClaw Voice lets you press a button or use a wake trigger, speak naturally, and hear OpenClaw answer back.
 
+This is the **Just use it** guide for people who mainly want to use an already-running setup.
+
 Phase 4 supports both the browser UI and an optional desktop client with wake-word, hotkey, and ambient always-on activation. Speech transcription runs locally with faster-whisper.
 
 If you are deploying or administering the service, use `README.md` instead. This guide is for end users only.
+
+If you are hosting the service yourself, use `docs/host-it-yourself.md`. If you want the always-on desktop flow explained from start to finish, use `docs/desktop-client-walkthrough.md`.
 
 You can use OpenClaw Voice in two ways:
 
 - **Browser mode**: open the web page on your phone, tablet, or computer
 - **Desktop mode**: use a desktop or mini-PC that stays on and sends voice turns from a command window
+
+## Quick glossary
+
+- `localhost`: a special address that means "this same computer"
+- `bearer token`: a secret text token that proves you are allowed to use the service
+- `endpoint`: the exact web address a program sends requests to
+- `absolute path`: the full file location, not a path relative to your current folder
+- `wake word`: the spoken phrase that tells the desktop client to start listening
 
 ## What You Need Before You Start
 
