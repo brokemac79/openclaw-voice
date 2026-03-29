@@ -47,13 +47,17 @@ If any of those are a stretch, ask the person who manages your OpenClaw setup to
 This guide sets up two things:
 
 1. **A background process manager (`pm2`)** — keeps OpenClaw Voice running even when you close your terminal or log out.
-2. **A temporary public tunnel (`cloudflared`)** — creates a secure HTTPS URL so other devices can reach the server running on your machine.
+2. **A remote-access path** — choose either:
+   - **Cloudflare Quick Tunnel (`cloudflared`)** for a temporary public HTTPS URL, or
+   - **Tailscale (`tailscale`)** for private HTTPS access between your own devices.
 
 ### Tools explained
 
 **`pm2`** is a process manager for Node.js apps. Think of it like a system service that restarts your app automatically if it crashes, and keeps it running in the background without needing a terminal window open. You install it once and tell it to watch your app.
 
-**`cloudflared`** is Cloudflare's tunnel tool. It creates a temporary public HTTPS URL that routes traffic to your locally-running server. This lets a phone or another laptop on a different network reach `localhost:8787` on your machine — without opening router ports or setting up a domain. The URL changes each time you restart the tunnel (see appendix for permanent alternatives).
+**`cloudflared`** is Cloudflare's tunnel tool. It creates a temporary public HTTPS URL that routes traffic to your locally-running server. This lets a phone or another laptop on a different network reach `localhost:8787` on your machine — without opening router ports or setting up a domain. The URL changes each time you restart the tunnel.
+
+**`tailscale`** creates a private encrypted network (tailnet) between your devices. With `tailscale serve`, you can expose your local OpenClaw Voice server as an HTTPS URL that only devices on your tailnet can reach.
 
 **Why two terminal windows?** The tunnel command (`cloudflared tunnel ...`) must stay running to keep the public URL active. You need it open in one terminal while you do other things (verify health, test, etc.) in another terminal. If you close the tunnel terminal, the public URL stops working.
 
@@ -65,9 +69,24 @@ You are done when all of these are true:
 
 - `pm2 status` shows `openclaw-voice` as `online`
 - `curl http://localhost:8787/health` returns `{"ok":true}` on the host
-- `cloudflared tunnel --url http://127.0.0.1:8787` prints an HTTPS URL in the terminal
-- the HTTPS URL loads the OpenClaw Voice page on a second device
+- either `cloudflared tunnel --url http://127.0.0.1:8787` **or** `tailscale serve https / http://127.0.0.1:8787` is running
+- the resulting HTTPS URL loads the OpenClaw Voice page on a second device
 - the second device can complete a voice request
+
+---
+
+## Choose your remote-access path
+
+After `pm2` is online, pick one option:
+
+- **Option A: Cloudflare Quick Tunnel**
+  - best when you need a fast temporary public URL
+  - anyone with the URL can reach your page, so protect it with your bearer token
+- **Option B: Tailscale private access**
+  - best when only your own devices (or teammates in the same tailnet) should reach it
+  - traffic stays private to your tailnet; no public URL is required
+
+If you need a **production VPS + domain + `systemd` + Caddy** setup, use `docs/vps-deployment-guide.md` instead of this machine-local guide.
 
 ---
 
@@ -144,7 +163,9 @@ pm2 status
 
 `pm2 status` should show `openclaw-voice` with status `online`. If it shows `errored`, run `pm2 logs openclaw-voice` to see what went wrong.
 
-### 5) Start Cloudflare tunnel
+### 5) Choose one remote-access option
+
+#### Option A (Linux): Cloudflare Quick Tunnel
 
 Install `cloudflared` and start the tunnel. Keep this terminal open — the public URL stays active only while this command runs.
 
@@ -156,17 +177,37 @@ cloudflared tunnel --url http://127.0.0.1:8787
 ```
 
 The command prints a line like:
+
 ```
 https://some-random-name.trycloudflare.com
 ```
 
 That is your public HTTPS URL. Copy it for the next step. **Do not close this terminal.**
 
+#### Option B (Linux): Tailscale private HTTPS
+
+Install Tailscale, join your tailnet, and expose OpenClaw Voice over tailnet HTTPS:
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+sudo tailscale serve https / http://127.0.0.1:8787
+tailscale status
+```
+
+`tailscale serve` prints (or enables) an HTTPS URL like:
+
+```
+https://your-hostname.your-tailnet.ts.net
+```
+
+That URL is reachable only by devices logged into the same tailnet.
+
 ### 6) Test from a second device
 
 On a phone, tablet, or second laptop:
 
-1. Open the `https://...trycloudflare.com` URL
+1. Open your HTTPS URL (`https://...trycloudflare.com` or your `https://...ts.net` URL)
 2. Allow microphone access when prompted
 3. Paste your `VOICE_API_BEARER_TOKEN` into the Access Token field
 4. Run a short voice request
@@ -237,7 +278,9 @@ pm2 status
 
 Check that `openclaw-voice` shows `online`.
 
-### 5) Start Cloudflare tunnel
+### 5) Choose one remote-access option
+
+#### Option A (macOS): Cloudflare Quick Tunnel
 
 Keep this terminal open — the public URL stays active only while this runs.
 
@@ -248,9 +291,22 @@ cloudflared tunnel --url http://127.0.0.1:8787
 
 Copy the `https://...trycloudflare.com` URL printed to the terminal. **Do not close this terminal.**
 
+#### Option B (macOS): Tailscale private HTTPS
+
+Install Tailscale, join your tailnet, and publish local HTTPS inside the tailnet:
+
+```bash
+brew install tailscale
+sudo tailscale up
+sudo tailscale serve https / http://127.0.0.1:8787
+tailscale status
+```
+
+Use the `https://...ts.net` URL shown by Tailscale from a second tailnet device.
+
 ### 6) Test from a second device
 
-1. Open the `https://...trycloudflare.com` URL
+1. Open your HTTPS URL (`https://...trycloudflare.com` or your `https://...ts.net` URL)
 2. Allow microphone access
 3. Paste your `VOICE_API_BEARER_TOKEN`
 4. Run a short voice request
@@ -269,7 +325,7 @@ Install Node.js 20 LTS from <https://nodejs.org/en/download>.
 
 Install Git for Windows from <https://git-scm.com/download/win> if you want to clone with Git. (Alternatively, download a ZIP from GitHub.)
 
-Install Cloudflare tunnel:
+Install Cloudflare tunnel (Option A below):
 
 ```powershell
 winget install --id Cloudflare.cloudflared -e
@@ -329,7 +385,9 @@ pm2 status
 
 Check that `openclaw-voice` shows `online`.
 
-### 5) Start Cloudflare tunnel
+### 5) Choose one remote-access option
+
+#### Option A (Windows): Cloudflare Quick Tunnel
 
 Keep this terminal open — the public URL stays active only while this runs.
 
@@ -340,9 +398,22 @@ cloudflared tunnel --url http://127.0.0.1:8787
 
 Copy the `https://...trycloudflare.com` URL. **Do not close this window.**
 
+#### Option B (Windows): Tailscale private HTTPS
+
+Install Tailscale, join your tailnet, and publish local HTTPS inside the tailnet:
+
+```powershell
+winget install --id Tailscale.Tailscale -e
+tailscale up
+tailscale serve https / http://127.0.0.1:8787
+tailscale status
+```
+
+Use the `https://...ts.net` URL shown by Tailscale from a second tailnet device.
+
 ### 6) Test from a second device
 
-1. Open the `https://...trycloudflare.com` URL
+1. Open your HTTPS URL (`https://...trycloudflare.com` or your `https://...ts.net` URL)
 2. Allow microphone
 3. Paste your `VOICE_API_BEARER_TOKEN`
 4. Run a short voice request
@@ -373,6 +444,14 @@ pm2 restart openclaw-voice
 - Verify the server is running: `curl http://localhost:8787/health` should return `{"ok":true}`
 - Retry: `cloudflared tunnel --url http://127.0.0.1:8787`
 
+### Tailscale URL is unreachable from second device
+
+- Confirm both devices are logged into the same tailnet account/team
+- On the host, verify service publishing: `tailscale serve status`
+- On the host, verify app health: `curl http://localhost:8787/health`
+- Re-run publish command if needed: `sudo tailscale serve https / http://127.0.0.1:8787`
+- Confirm you are opening the `https://...ts.net` URL from Tailscale (not `http://localhost:8787` on the second device)
+
 ### Second device opens page but microphone is blocked
 
 The browser requires HTTPS for microphone access. Make sure you used the `https://...trycloudflare.com` URL, not a local `http://` address. Recheck browser site microphone permission and try again in Chrome, Edge, Safari, or Firefox.
@@ -396,5 +475,6 @@ See the appendix below if you need a permanent URL.
 
 - **Permanent URL**: move to a named Cloudflare Tunnel on your own domain (requires a Cloudflare account and DNS management)
 - **Private network only**: use Tailscale to share the service across devices without a public URL
+- **VPS + domain setup**: use `docs/vps-deployment-guide.md` for Ubuntu/Debian + `systemd` + Caddy
 - **Linux service without pm2**: use `systemd` to manage the process instead of pm2
 - **Custom reverse proxy**: use Caddy or Nginx on your own domain for full control over TLS and routing

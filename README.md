@@ -25,12 +25,14 @@ Read this before you open any setup guide:
 | I just want to talk to OpenClaw in a browser and do not want to install anything. | Stop here and use `docs/user-guide.md`. |
 | I can follow copy-and-paste terminal steps, install software, edit a `.env` file, and spend about 30 to 60 minutes on first-time setup. | Use `docs/host-it-yourself.md`. |
 | I already have the server working on my own machine and now want it reachable from another device. I am comfortable keeping a terminal open and spending another 20 to 40 minutes on background service and tunnel steps. | Use `docs/deployment-guide.md`. |
+| I want a production-style server on a VPS with my own domain, HTTPS, and restart-safe services. | Use `docs/vps-deployment-guide.md`. |
 
 If terminal commands, config files, or troubleshooting feel out of bounds for you, the browser guide is the right stopping point.
 
 - I only want to talk to OpenClaw in my browser: go to `docs/user-guide.md`
 - I want to run OpenClaw Voice on my own computer: go to `docs/host-it-yourself.md`
 - I want it to stay running and work from another device: go to `docs/deployment-guide.md`
+- I want a VPS + domain deployment with Caddy and `systemd`: go to `docs/vps-deployment-guide.md`
 - I want an always-on desktop client with wake word or hotkey: go to `docs/desktop-client-walkthrough.md`
 - I am already set up and only need setting explanations: go to `docs/env-reference.md`
 
@@ -89,6 +91,7 @@ You speak -> speech-to-text -> OpenClaw -> text-to-speech -> audio reply
 - See `docs/desktop-client-walkthrough.md` for the desktop client end-to-end flow.
 - See `docs/host-it-yourself.md` for beginner-friendly hosting steps.
 - See `docs/deployment-guide.md` for keeping the service running and reachable from other devices.
+- See `docs/vps-deployment-guide.md` for Ubuntu/Debian VPS deployments with Caddy and `systemd`.
 - See `docs/env-reference.md` for a variable-by-variable `.env` guide.
 
 ## For developers: implementation details
