@@ -123,6 +123,9 @@ If you only want to talk to OpenClaw in a browser, stop here and use `docs/user-
     OPENCLAW_OUTPUT_FIELD=response
     ```
 
+    - `VOICE_API_BEARER_TOKEN`: choose any password-like string yourself, such as `mytoken123`. It just needs to match anywhere else you enter it.
+    - `OPENCLAW_URL`: find the OpenClaw address shown when OpenClaw starts, often something like `ws://192.168.1.10:18789`, then use the matching HTTP API endpoint on that host.
+
 5. Start server:
 
    ```bash
@@ -151,12 +154,30 @@ If `python3 -m pip --version` fails, install pip first, then re-run the check.
 
 ### 2) Create and activate a virtual environment (recommended)
 
-From the project root:
+From the project root, use the activation command that matches your terminal:
+
+macOS/Linux:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install --upgrade pip
+```
+
+Windows Command Prompt:
+
+```cmd
+py -m venv .venv
+.venv\Scripts\activate.bat
+py -m pip install --upgrade pip
+```
+
+Windows PowerShell:
+
+```powershell
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+py -m pip install --upgrade pip
 ```
 
 Why: this keeps Python packages for this project isolated from system-wide packages.
@@ -165,10 +186,10 @@ Why: this keeps Python packages for this project isolated from system-wide packa
 
 `faster-whisper` relies on ffmpeg for decoding common input formats.
 
-- macOS (Homebrew): `brew install ffmpeg`
-- Ubuntu/Debian: `sudo apt-get update && sudo apt-get install -y ffmpeg`
+- macOS: if you do not already have Homebrew, install it from <https://brew.sh> first. Homebrew is a free package manager for command-line tools. Then run `brew install ffmpeg`.
+- Ubuntu/Debian: `apt` is usually already installed. Run `sudo apt install ffmpeg`.
 - Fedora/RHEL: `sudo dnf install -y ffmpeg`
-- Windows (Chocolatey): `choco install ffmpeg -y`
+- Windows: if you use Chocolatey, run `choco install ffmpeg -y`. If not, use the direct download options at <https://ffmpeg.org/download.html>.
 
 Verify it is available:
 

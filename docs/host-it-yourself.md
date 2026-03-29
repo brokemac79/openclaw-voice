@@ -33,6 +33,13 @@ Use the rest of this guide only if you are setting up the server yourself.
 - how to start the voice server
 - how to fix the most common first-run errors
 
+> Before you start:
+> - Python 3.10 or later installed
+> - Node.js installed for the browser frontend
+> - `ffmpeg` installed
+> - OpenClaw already running somewhere and you have its address
+> - a terminal, Command Prompt, or PowerShell window open
+
 ## Beginner quick start
 
 ### 1. Get the project files
@@ -129,7 +136,8 @@ OPENCLAW_INPUT_FIELD=input
 OPENCLAW_OUTPUT_FIELD=response
 ```
 
-Use your real token and real HTTP API address. Do not use a `ws://` or `wss://` address here.
+- `VOICE_API_BEARER_TOKEN`: choose any password-like text yourself, such as `mytoken123`. It does not come from a website. It just needs to match anywhere else you enter the same token.
+- `OPENCLAW_URL`: this is the OpenClaw address to connect to. You can usually find the host address in the OpenClaw startup window or logs when it starts, often shown as something like `ws://192.168.1.10:18789`. For this file, use the matching HTTP API address on that host, such as `http://192.168.1.10:3000/api/chat`, not the `ws://` address itself.
 
 Use `docs/env-reference.md` for what each value means, where to get it, and example values.
 
@@ -153,7 +161,7 @@ py --version
 py -m pip --version
 ```
 
-Create a virtual environment:
+Create a virtual environment, then activate it with the command that matches your terminal:
 
 macOS/Linux:
 
@@ -166,7 +174,7 @@ python3 -m pip install --upgrade pip
 What it does:
 
 - creates a private Python environment for this project
-- turns it on in your current terminal
+- turns it on in your current terminal with `source .venv/bin/activate`
 - upgrades pip inside that private environment
 
 Windows Command Prompt:
@@ -185,11 +193,11 @@ py -m venv .venv
 py -m pip install --upgrade pip
 ```
 
-Install `ffmpeg` and `faster-whisper`:
+Install `ffmpeg` first, then `faster-whisper`:
 
-- macOS: `brew install ffmpeg`
-- Ubuntu/Debian: `sudo apt-get update && sudo apt-get install -y ffmpeg`
-- Windows with Chocolatey: `choco install ffmpeg -y`
+- macOS: if you do not already have Homebrew, install it from <https://brew.sh> first. Homebrew is a free package manager that installs command-line tools. Then run `brew install ffmpeg`.
+- Linux (Ubuntu/Debian): `apt` is usually already available. Run `sudo apt install ffmpeg`.
+- Windows: if you use Chocolatey, run `choco install ffmpeg -y`. Chocolatey is a Windows package manager similar to Homebrew. If you do not use Chocolatey, download `ffmpeg` from <https://ffmpeg.org/download.html> instead.
 
 Then:
 
@@ -325,7 +333,7 @@ Fix:
 
 Diagnosis: `OPENCLAW_URL` points at the wrong place.
 
-Plain-English rule: use the real HTTP API address, not a website home page and not a `ws://` websocket address.
+Plain-English rule: use the real HTTP API address, not a website home page and not a `ws://` websocket address. If OpenClaw shows you a `ws://` address at startup, use that to identify the right machine, then switch to the matching HTTP API endpoint.
 
 Fix:
 

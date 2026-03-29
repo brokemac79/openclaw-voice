@@ -14,8 +14,8 @@ Columns:
 | Variable | What it is | Example value | Needed for | Where to get it |
 | --- | --- | --- | --- | --- |
 | `PORT` | Local port for the voice server web page and API | `8787` | All self-hosted setups | Pick an open local port |
-| `VOICE_API_BEARER_TOKEN` | Secret token browsers and clients must send to use the voice API | `mytoken123` | All self-hosted setups | Generate it yourself or from your secret manager |
-| `OPENCLAW_URL` | HTTP endpoint for your OpenClaw-compatible chat API | `http://192.168.1.10:3000/api/chat` | All self-hosted setups | Your OpenClaw server or upstream service |
+| `VOICE_API_BEARER_TOKEN` | Password-like token browsers and clients must send to use the voice API | `mytoken123` | All self-hosted setups | Choose any string yourself, then reuse that same value anywhere the client asks for the token |
+| `OPENCLAW_URL` | HTTP endpoint for your OpenClaw-compatible chat API | `http://192.168.1.10:3000/api/chat` | All self-hosted setups | Look for the OpenClaw address shown when OpenClaw starts, then use the matching `http://` or `https://` API endpoint on that host |
 | `OPENCLAW_METHOD` | HTTP method used for upstream requests | `POST` | All self-hosted setups | Usually leave the default unless your upstream says otherwise |
 | `OPENCLAW_INPUT_FIELD` | JSON field name used for the sent prompt text | `input` | All self-hosted setups | Your upstream API contract |
 | `OPENCLAW_OUTPUT_FIELD` | JSON field name read from the upstream reply | `response` | All self-hosted setups | Your upstream API contract |
