@@ -14,12 +14,12 @@ Columns:
 | Variable | What it is | Example value | Needed for | Where to get it |
 | --- | --- | --- | --- | --- |
 | `PORT` | Local port for the voice server web page and API | `8787` | All self-hosted setups | Pick an open local port |
-| `VOICE_API_BEARER_TOKEN` | Secret token browsers and clients must send to use the voice API | `replace-with-a-long-random-token` | All self-hosted setups | Generate it yourself or from your secret manager |
-| `OPENCLAW_URL` | HTTP endpoint for your OpenClaw-compatible chat API | `http://127.0.0.1:3000/api/chat` | All self-hosted setups | Your OpenClaw server or upstream service |
+| `VOICE_API_BEARER_TOKEN` | Secret token browsers and clients must send to use the voice API | `mytoken123` | All self-hosted setups | Generate it yourself or from your secret manager |
+| `OPENCLAW_URL` | HTTP endpoint for your OpenClaw-compatible chat API | `http://192.168.1.10:3000/api/chat` | All self-hosted setups | Your OpenClaw server or upstream service |
 | `OPENCLAW_METHOD` | HTTP method used for upstream requests | `POST` | All self-hosted setups | Usually leave the default unless your upstream says otherwise |
 | `OPENCLAW_INPUT_FIELD` | JSON field name used for the sent prompt text | `input` | All self-hosted setups | Your upstream API contract |
 | `OPENCLAW_OUTPUT_FIELD` | JSON field name read from the upstream reply | `response` | All self-hosted setups | Your upstream API contract |
-| `OPENCLAW_AUTH_BEARER` | Optional bearer token for the upstream OpenClaw API | `replace-with-upstream-token-if-needed` | Only if your upstream requires auth | Your OpenClaw or gateway auth settings |
+| `OPENCLAW_AUTH_BEARER` | Optional bearer token for the upstream OpenClaw API | `upstream-token-abc123` | Only if your upstream requires auth | Your OpenClaw or gateway auth settings |
 
 ## Speech-to-text (`faster-whisper`)
 
@@ -81,7 +81,7 @@ Skip this section unless you want Sonos playback.
 | --- | --- | --- | --- | --- |
 | `VOICE_CLIENT_SERVICE_URL` | Base URL for the voice service used by the desktop client | `http://127.0.0.1:8787` | Desktop client | The address where your voice server is running |
 | `VOICE_CLIENT_API_PATH` | API route used for voice turns | `/api/voice/turn` | Desktop client | Usually keep the default |
-| `VOICE_CLIENT_BEARER_TOKEN` | Token the desktop client sends to the voice service | `replace-with-your-voice-token` | Desktop client | Same source as `VOICE_API_BEARER_TOKEN` or a dedicated token |
+| `VOICE_CLIENT_BEARER_TOKEN` | Token the desktop client sends to the voice service | `mytoken123` | Desktop client | Same source as `VOICE_API_BEARER_TOKEN` or a dedicated token |
 | `VOICE_CLIENT_SESSION_ID` | Friendly label sent with desktop requests | `OfficeDesk` | Desktop client | Choose any label you will recognize |
 | `VOICE_CLIENT_SONOS_ROOM` | Default Sonos room for that desktop station | `Office` | Desktop + Sonos | Exact Sonos room name |
 | `VOICE_CLIENT_OUTPUT_DIR` | Folder for temporary recordings and reply audio | `/tmp/openclaw-voice-client` | Desktop client | Choose any writable folder |

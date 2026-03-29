@@ -4,6 +4,26 @@ Use this guide if you are setting up and running OpenClaw Voice on your own mach
 
 If you only want to use an already-running service, stop here and open `docs/user-guide.md` instead.
 
+## Before you touch the terminal
+
+If you are not comfortable with terminal commands, use the browser-only path in `docs/user-guide.md` or ask whoever hosts OpenClaw for your URL and token.
+
+## I just want voice in my browser
+
+You do **not** need to self-host the whole project just to talk to OpenClaw in a web page.
+
+Do this instead:
+
+1. Ask the host for your OpenClaw Voice web link.
+2. Ask the host for your voice access token.
+3. Open the link in Chrome, Edge, Safari, or Firefox.
+4. Click **Allow** when the browser asks for microphone access.
+5. Paste the token into **Access Token**.
+6. Click **Save Settings**.
+7. Hold **Hold to Talk**, speak, and release.
+
+Use the rest of this guide only if you are setting up the server yourself.
+
 ## What this guide covers
 
 - how to get the project onto your computer
@@ -60,11 +80,13 @@ Success check: running `pwd` (macOS/Linux) or `Get-Location` (PowerShell) should
 
 Install Node.js 20 or newer first if you do not already have it.
 
-Then run:
+Copy and paste this command to install the JavaScript packages this project needs:
 
 ```bash
 npm install
 ```
+
+What it does: downloads the packages listed in `package.json`.
 
 Success check: the command finishes without a red error block and creates a `node_modules` folder.
 
@@ -72,11 +94,15 @@ If Windows says `npm` is not recognized, jump to [First-run troubleshooting](#fi
 
 ### 5. Create your `.env` file
 
+This file stores the addresses and tokens the app needs.
+
 macOS/Linux:
 
 ```bash
 cp .env.example .env
 ```
+
+What it does: makes a new `.env` file by copying the example file.
 
 Windows PowerShell:
 
@@ -84,12 +110,26 @@ Windows PowerShell:
 Copy-Item .env.example .env
 ```
 
+What it does: makes the same copy on Windows PowerShell.
+
 Then open `.env` in a text editor and fill the values you need.
 
 At minimum, beginners usually need:
 
 - `VOICE_API_BEARER_TOKEN`
 - `OPENCLAW_URL`
+
+Example minimum values:
+
+```env
+VOICE_API_BEARER_TOKEN=mytoken123
+OPENCLAW_URL=http://192.168.1.10:3000/api/chat
+OPENCLAW_METHOD=POST
+OPENCLAW_INPUT_FIELD=input
+OPENCLAW_OUTPUT_FIELD=response
+```
+
+Use your real token and real HTTP API address. Do not use a `ws://` or `wss://` address here.
 
 Use `docs/env-reference.md` for what each value means, where to get it, and example values.
 
@@ -103,6 +143,8 @@ Install Python 3 and check it:
 python3 --version
 python3 -m pip --version
 ```
+
+What it does: confirms Python and pip are available before you install speech-to-text tools.
 
 Windows PowerShell alternative:
 
@@ -120,6 +162,12 @@ python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install --upgrade pip
 ```
+
+What it does:
+
+- creates a private Python environment for this project
+- turns it on in your current terminal
+- upgrades pip inside that private environment
 
 Windows Command Prompt:
 
@@ -149,32 +197,49 @@ Then:
 python3 -m pip install faster-whisper
 ```
 
+What it does: installs the speech-to-text package OpenClaw Voice uses.
+
 Windows alternative:
 
 ```powershell
 py -m pip install faster-whisper
 ```
 
-Success check:
+Success checks:
 
 ```bash
 ffmpeg -version
-python3 scripts/faster_whisper_transcribe.py --audio-path test.wav --model base.en
 ```
 
-If you do not have `test.wav`, create one first:
+What it does: the first command confirms `ffmpeg` is installed.
+
+Make a small test audio file yourself so you do not need a pre-existing `test.wav`:
 
 ```bash
 ffmpeg -f lavfi -i "anullsrc=r=16000:cl=mono" -t 2 test.wav
 ```
 
+What it does: creates a 2-second silent WAV file named `test.wav` in the project folder.
+
+Now run the speech-to-text smoke test:
+
+```bash
+python3 scripts/faster_whisper_transcribe.py --audio-path test.wav --model base.en
+```
+
+What it does: runs the local transcription helper against the test file you just created.
+
 Success output should include JSON with keys like `text`, `language`, and `duration`.
 
 ### 7. Start the server
 
+Copy and paste this command to start the local web server:
+
 ```bash
 npm run dev
 ```
+
+What it does: starts OpenClaw Voice on your computer.
 
 Success check: you should see a line like this:
 
@@ -204,6 +269,14 @@ Then open `http://localhost:8787` in your browser.
 3. Allow microphone access.
 4. Paste your voice token.
 5. Hold **Hold to talk**, speak, and release.
+
+What success looks like:
+
+- the **Hold to Talk** button is enabled
+- your words appear under **Transcription**
+- the OpenClaw reply appears on screen
+
+![Example browser screen with the saved settings card and voice results](assets/browser-ui-example.svg)
 
 ## First-run troubleshooting
 

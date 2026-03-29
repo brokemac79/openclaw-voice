@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="820" viewBox="0 0 1280 820" role="img" aria-labelledby="title desc">
+  <title id="title">Example desktop client terminal output</title>
+  <desc id="desc">A terminal-style screenshot showing OpenClaw desktop voice client startup text and a completed voice turn.</desc>
+  <rect width="1280" height="820" fill="#eef2f6"/>
+  <rect x="90" y="70" width="1100" height="680" rx="24" fill="#10161d" stroke="#2b3a48"/>
+  <rect x="90" y="70" width="1100" height="42" rx="24" fill="#1f2b36"/>
+  <circle cx="124" cy="91" r="8" fill="#ff6b6b"/>
+  <circle cx="150" cy="91" r="8" fill="#ffd166"/>
+  <circle cx="176" cy="91" r="8" fill="#4ecdc4"/>
+  <text x="640" y="98" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#d5dee7">Terminal</text>
+  <text x="130" y="160" font-family="Courier New, monospace" font-size="30" fill="#d9e2ec">OpenClaw desktop voice client started.</text>
+  <text x="130" y="205" font-family="Courier New, monospace" font-size="30" fill="#d9e2ec">Press Enter for manual fallback recording, or type q then Enter to quit.</text>
+  <text x="130" y="250" font-family="Courier New, monospace" font-size="30" fill="#6ee7b7">Wake word listener active (Porcupine).</text>
+  <text x="130" y="295" font-family="Courier New, monospace" font-size="30" fill="#6ee7b7">Global hotkey listener active (CTRL+SHIFT+SPACE).</text>
+  <text x="130" y="380" font-family="Courier New, monospace" font-size="30" fill="#93c5fd">Wake trigger: manual-enter</text>
+  <text x="130" y="425" font-family="Courier New, monospace" font-size="30" fill="#d9e2ec">Recording...</text>
+  <text x="130" y="470" font-family="Courier New, monospace" font-size="30" fill="#d9e2ec">Recorded: /tmp/openclaw-voice-client/recording-001.wav</text>
+  <text x="130" y="515" font-family="Courier New, monospace" font-size="30" fill="#d9e2ec">Sending to voice service...</text>
+  <text x="130" y="560" font-family="Courier New, monospace" font-size="30" fill="#fcd34d">You said: what is on my calendar today</text>
+  <text x="130" y="605" font-family="Courier New, monospace" font-size="30" fill="#f9fafb">Assistant: You have two meetings this afternoon.</text>
+  <text x="130" y="650" font-family="Courier New, monospace" font-size="30" fill="#d9e2ec">Reply audio: /tmp/openclaw-voice-client/reply-001.mp3</text>
+  <text x="130" y="715" font-family="Courier New, monospace" font-size="30" fill="#6ee7b7">Ready for next wake trigger. Type q then Enter to quit.</text>
+</svg>

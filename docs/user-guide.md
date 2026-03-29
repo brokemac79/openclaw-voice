@@ -4,6 +4,8 @@ OpenClaw Voice lets you press a button or use a wake trigger, speak naturally, a
 
 This is the **Just use it** guide for people who mainly want to use an already-running setup.
 
+If terminal commands make you uncomfortable, stay on the browser-only path in this guide or ask the person hosting OpenClaw Voice for your web link and token.
+
 Phase 4 supports both the browser UI and an optional desktop client with wake-word, hotkey, and ambient always-on activation. Speech transcription runs locally with faster-whisper.
 
 If you are deploying or administering the service, use `README.md` instead. This guide is for end users only.
@@ -48,6 +50,26 @@ Also supported:
 If your browser is older and recording does not work, update the browser first.
 
 ## First-Time Setup
+
+### Fastest path: I just want voice in my browser
+
+If you do not want to install anything, do only these steps:
+
+1. Open the OpenClaw Voice web link you were given.
+2. Click **Allow** when the browser asks to use your microphone.
+3. Paste your token into **Access Token**.
+4. Click **Save Settings**.
+5. Wait for the page to say it is ready.
+6. Hold **Hold to Talk**, speak, then let go.
+
+What success looks like:
+
+- the big button is enabled
+- the status text says the app is ready
+- your spoken words appear under **Transcription**
+- the reply appears under **OpenClaw Response**
+
+![Example browser screen with saved settings and the Hold to Talk button](assets/browser-ui-example.svg)
 
 ### Browser mode
 

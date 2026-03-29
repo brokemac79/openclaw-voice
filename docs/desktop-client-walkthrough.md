@@ -82,6 +82,14 @@ Wake word listener active (Porcupine).
 Global hotkey listener active (CTRL+SHIFT+SPACE).
 ```
 
+What success looks like:
+
+- you see the startup lines above
+- the window stays open waiting for input
+- after a voice turn, you see `You said:` and `Assistant:` lines
+
+![Example desktop terminal output showing startup and one completed voice turn](assets/desktop-client-example.svg)
+
 If you enabled ambient mode, you may also see:
 
 ```text

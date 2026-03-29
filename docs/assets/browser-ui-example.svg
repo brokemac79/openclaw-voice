@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900" role="img" aria-labelledby="title desc">
+  <title id="title">Example OpenClaw Voice browser screen</title>
+  <desc id="desc">A browser-style screenshot showing the OpenClaw Voice settings card, Hold to Talk button, transcription, and response.</desc>
+  <rect width="1280" height="900" fill="#eef5fb"/>
+  <rect x="70" y="50" width="1140" height="800" rx="28" fill="#ffffff" stroke="#c9d8e6"/>
+  <rect x="70" y="50" width="1140" height="44" rx="28" fill="#dde8f2"/>
+  <circle cx="104" cy="72" r="8" fill="#ff6b6b"/>
+  <circle cx="130" cy="72" r="8" fill="#ffd166"/>
+  <circle cx="156" cy="72" r="8" fill="#4ecdc4"/>
+  <text x="640" y="78" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="#2f4b63">OpenClaw Voice Assistant</text>
+  <text x="150" y="145" font-family="Arial, sans-serif" font-size="38" font-weight="700" fill="#12324a">OpenClaw Voice Assistant</text>
+  <text x="150" y="184" font-family="Arial, sans-serif" font-size="24" fill="#42637d">Talk naturally to your smart-home assistant. Press and hold the big button, then release to send.</text>
+  <rect x="140" y="220" width="1000" height="270" rx="24" fill="#f8fbfe" stroke="#d6e2ec"/>
+  <text x="175" y="265" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#12324a">Settings</text>
+  <text x="175" y="295" font-family="Arial, sans-serif" font-size="20" fill="#5d7a92">Set these once, tap Save, and they stay on this device.</text>
+  <text x="175" y="345" font-family="Arial, sans-serif" font-size="20" fill="#12324a">Voice Service URL</text>
+  <rect x="175" y="358" width="930" height="48" rx="12" fill="#ffffff" stroke="#bfd1df"/>
+  <text x="195" y="389" font-family="Courier New, monospace" font-size="22" fill="#34506a">http://192.168.1.10:8787</text>
+  <text x="175" y="440" font-family="Arial, sans-serif" font-size="20" fill="#12324a">Access Token</text>
+  <rect x="175" y="453" width="930" height="48" rx="12" fill="#ffffff" stroke="#bfd1df"/>
+  <text x="195" y="484" font-family="Courier New, monospace" font-size="22" fill="#34506a">mytoken123</text>
+  <rect x="175" y="520" width="190" height="52" rx="14" fill="#2d6cdf"/>
+  <text x="270" y="553" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#ffffff">Save Settings</text>
+  <text x="175" y="610" font-family="Arial, sans-serif" font-size="22" fill="#2a7b5f">Settings saved. You can now hold the button to talk.</text>
+  <rect x="320" y="620" width="640" height="108" rx="26" fill="#2d6cdf"/>
+  <text x="640" y="685" text-anchor="middle" font-family="Arial, sans-serif" font-size="40" font-weight="700" fill="#ffffff">Hold to Talk</text>
+  <text x="640" y="750" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" fill="#4f6f88">Tip: this also works by pressing and holding Space or Enter on a keyboard.</text>
+  <rect x="140" y="770" width="470" height="90" rx="20" fill="#f8fbfe" stroke="#d6e2ec"/>
+  <text x="170" y="810" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#12324a">Transcription</text>
+  <text x="170" y="845" font-family="Courier New, monospace" font-size="20" fill="#34506a">turn on the office lights</text>
+  <rect x="670" y="770" width="470" height="90" rx="20" fill="#f8fbfe" stroke="#d6e2ec"/>
+  <text x="700" y="810" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#12324a">OpenClaw Response</text>
+  <text x="700" y="845" font-family="Courier New, monospace" font-size="20" fill="#34506a">Done. The office lights are now on.</text>
+</svg>

@@ -27,6 +27,7 @@ Voice interface for OpenClaw with:
 
 ## Start here by audience
 
+- If terminal commands are not your thing, use the browser-only path in `docs/user-guide.md` or ask your host for the web link and token.
 - Just use it: `docs/user-guide.md`
 - Host it yourself: `docs/host-it-yourself.md`
 - Desktop client operators: `docs/desktop-client-walkthrough.md`
@@ -87,6 +88,8 @@ Optional features (install only if you use them):
 
 Node requirement: `>=20`.
 
+If you only want to talk to OpenClaw in a browser, stop here and use `docs/user-guide.md` instead.
+
 1. Install Node dependencies:
 
    ```bash
@@ -107,8 +110,18 @@ Node requirement: `>=20`.
 
 4. Fill required `.env` values:
 
-   - `VOICE_API_BEARER_TOKEN`
-   - `OPENCLAW_URL` (must be an `http://` or `https://` endpoint; do not use `ws://` or `wss://`)
+    - `VOICE_API_BEARER_TOKEN`
+    - `OPENCLAW_URL` (must be an `http://` or `https://` endpoint; do not use `ws://` or `wss://`)
+
+    Example minimum values:
+
+    ```env
+    VOICE_API_BEARER_TOKEN=mytoken123
+    OPENCLAW_URL=http://192.168.1.10:3000/api/chat
+    OPENCLAW_METHOD=POST
+    OPENCLAW_INPUT_FIELD=input
+    OPENCLAW_OUTPUT_FIELD=response
+    ```
 
 5. Start server:
 
@@ -193,11 +206,13 @@ If your machine is very resource-constrained, try `FASTER_WHISPER_MODEL=tiny.en`
 
 ### 7) Run a standalone smoke test
 
-If you do not already have `test.wav`, create a short sample file:
+Create your own short sample file so you do not need a pre-existing `test.wav`:
 
 ```bash
 ffmpeg -f lavfi -i "anullsrc=r=16000:cl=mono" -t 2 test.wav
 ```
+
+What this does: makes a 2-second silent WAV file in the project root.
 
 Then run:
 
