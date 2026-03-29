@@ -8,10 +8,24 @@
 >
 > This guide assumes you have already completed local setup and `http://localhost:8787` works on your host machine.
 
+> [!CAUTION]
+> **Hard prerequisite before deployment:** You already have a real upstream OpenClaw-compatible HTTP API endpoint and token (if required).
+> If you only have `ws://...` and do not know the matching HTTP API URL, stop and ask your OpenClaw server administrator before continuing.
+
 Use this guide when you want OpenClaw Voice to:
 
 - keep running in the background even after you close your terminal, **and**
 - be reachable from another device (phone, tablet, second laptop)
+
+## Prerequisites at a glance
+
+Do not continue unless all are ready:
+
+- [ ] Local setup already works at `http://localhost:8787`
+- [ ] Node.js 20+ installed on the host machine
+- [ ] Real upstream OpenClaw HTTP API URL ready (not only `ws://`)
+- [ ] Upstream API token ready (if your upstream requires one)
+- [ ] You can test from a second device on your network (phone/tablet/laptop)
 
 ---
 

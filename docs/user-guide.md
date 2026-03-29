@@ -1,66 +1,77 @@
 # OpenClaw Voice User Guide
 
-OpenClaw Voice lets you press a button or use a wake trigger, speak naturally, and hear OpenClaw answer back.
+This is the primary end-user guide for people who already have an OpenClaw Voice link and token.
 
-This is the **Just use it** guide for people who mainly want to use an already-running setup.
+## Start here first
 
-If terminal commands make you uncomfortable, stay on the browser-only path in this guide or ask the person hosting OpenClaw Voice for your web link and token.
+- If someone else set this up for you, read this guide.
+- I need to host or configure the service: use `docs/host-it-yourself.md`
+- I need the always-on desktop client guide: use `docs/desktop-client-walkthrough.md`
 
-This version supports both the browser UI and an optional desktop client with wake-word, hotkey, and ambient always-on activation. Speech transcription runs locally with faster-whisper.
+> If someone else set this up for you, stay in this guide.
+>
+> If you want to set it up yourself, switch to `docs/host-it-yourself.md`.
 
-If you are deploying or administering the service, use `README.md` instead. This guide is for end users only.
-
-If you are hosting the service yourself, use `docs/host-it-yourself.md`. If you want the always-on desktop flow explained from start to finish, use `docs/desktop-client-walkthrough.md`.
-
-You can use OpenClaw Voice in two ways:
-
-- **Browser mode**: open the web page on your phone, tablet, or computer
-- **Desktop mode**: use a desktop or mini-PC that stays on and sends voice turns from a command window
-
-## Quick glossary
-
-- `localhost`: a special address that means "this same computer"
-- `bearer token`: a secret text token that proves you are allowed to use the service
-- `endpoint`: the exact web address a program sends requests to
-- `absolute path`: the full file location, not a path relative to your current folder
-- `wake word`: the spoken phrase that tells the desktop client to start listening
-
-## What You Need Before You Start
+## What you need
 
 - A phone, tablet, or computer with a microphone
-- A supported web browser with microphone access enabled, or a desktop setup prepared by your administrator
+- A supported web browser
 - Your OpenClaw Voice web link
-- Your voice access token from the person who set up the system
-- If you use Sonos playback, the Sonos room name your administrator told you to use
+- Your access token
+- Your Sonos room name only if your host told you to use one
 
-## Browser Compatibility
+If terminal commands make you uncomfortable, stay on the browser path in this guide and ask the person hosting OpenClaw Voice for your link and token.
+
+## Browser compatibility
 
 Best experience:
 
 - Chrome (desktop + Android)
 - Edge (desktop)
 - Safari (iOS 16.4+ and macOS Safari 16.4+)
-
-Safari 16.4+ is supported and audio upload works automatically.
-
-Also supported:
-
 - Firefox current version (desktop)
 
-If your browser is older and recording does not work, update the browser first.
+If recording does not work, update the browser first.
 
-## First-Time Setup
+## First-time setup
 
-### Fastest path: I just want voice in my browser
+### What to paste where
 
-If you do not want to install anything, do only these steps:
+| Screen field | What belongs there |
+| --- | --- |
+| Browser **Voice Service URL** | The OpenClaw Voice page/service URL from your host, for example `http://localhost:8787` |
+| Browser **Access Token** | The access token from your host |
+| Browser **Session ID (optional)** | Only use this if your host told you to |
+| Browser **Sonos Room (optional)** | Only use this if your host told you to |
+
+If someone gives you extra server details such as `.env`, websocket URLs, Python commands, or relay settings, you can ignore them for normal browser use.
+
+Filled browser example:
+
+| Screen field | Example value | Who gives it to you |
+| --- | --- | --- |
+| **Voice Service URL** | `https://voice.example.net` | Your host/admin |
+| **Access Token** | `demo-voice-token-9f3a` | Your host/admin |
+| **Session ID (optional)** | `KitchenTablet` | Usually you choose this only if your host asked for one |
+| **Sonos Room (optional)** | `Kitchen` | Your host/admin if they use Sonos |
+
+If your host says "use the browser at `https://voice.example.net` and paste token `demo-voice-token-9f3a`," your filled screen should look like this:
+
+- **Voice Service URL**: `https://voice.example.net`
+- **Access Token**: `demo-voice-token-9f3a`
+- **Session ID**: leave blank unless they asked for one such as `KitchenTablet`
+- **Sonos Room**: leave blank unless they gave you a room such as `Kitchen`
+
+## Use it in your browser
 
 1. Open the OpenClaw Voice web link you were given.
 2. Click **Allow** when the browser asks to use your microphone.
-3. Paste your token into **Access Token**.
-4. Click **Save Settings**.
-5. Wait for the page to say it is ready.
-6. Hold **Hold to Talk**, speak, then let go.
+3. Check that **Voice Service URL** matches the address from your host.
+4. Paste your token into **Access Token**.
+5. Leave **Session ID** and **Sonos Room** blank unless your host told you to fill them in.
+6. Click **Save Settings**.
+7. Wait for the page to say it is ready.
+8. Hold **Hold to Talk**, speak, then let go.
 
 What success looks like:
 
@@ -71,40 +82,9 @@ What success looks like:
 
 ![Example browser screen with saved settings and the Hold to Talk button](assets/browser-ui-example.svg)
 
-### Browser mode
+## How to talk to OpenClaw
 
-1. Open the OpenClaw Voice page in your browser.
-2. When your browser asks for microphone access, choose **Allow**.
-3. In the **Settings** card at the top of the page, check that **Voice Service URL** matches the service address you were given.
-4. In **Access Token**, paste the voice access token you were given.
-5. If your setup uses OpenClaw conversation tracking, enter a value in **Session ID (optional)**.
-6. If your household or project uses Sonos playback, enter the speaker in **Sonos Room (optional)**.
-7. Click **Save Settings**.
-8. Check the saved summary under the Settings card. It should show your service URL, session ID and room if used, and a masked token.
-9. Wait for the status message to say the app is ready.
-
-### Desktop mode
-
-If your administrator set up the desktop voice client for you:
-
-1. Open the terminal or command window they provided.
-2. Start the client with `npm run desktop:client` unless they already configured it to start automatically.
-   Type this into the same terminal window from inside the project folder.
-3. Wait for the message that says `OpenClaw desktop voice client started.`
-4. Say the configured wake phrase (for example **Hey OpenClaw**) or use the fallback hotkey your administrator configured.
-5. Listen for the short confirmation beep, then speak naturally.
-6. Wait for the transcript and reply text to print in the window.
-7. If reply audio is enabled, listen for playback on the local device or on the configured Sonos room.
-
-If your administrator left the client in `manual` mode, pressing **Enter** still starts a recording without the wake word or hotkey.
-
-If the client is configured for ambient mode, it can also record on a timer without waiting for a manual trigger.
-
-If the desktop client is meant to stay available all day, ask your administrator to run it as a background service so you do not need to restart it manually.
-
-## How To Talk To OpenClaw
-
-1. Press and hold **Hold to talk**.
+1. Press and hold **Hold to Talk**.
 2. Speak clearly while holding the button.
 3. Release the button when you are done.
 4. Wait while the app uploads your audio and gets a reply.
@@ -117,112 +97,7 @@ After each turn, the page shows:
 - **Transcription**: what the app heard you say
 - **OpenClaw Response**: the reply text before it is spoken aloud
 
-In desktop mode, the same information appears in the terminal window after each recording.
-
-Desktop mode supports these trigger paths:
-
-- Wake word (Picovoice Porcupine)
-- Global hotkey fallback
-- Manual Enter key fallback
-- Ambient loop mode (always-on periodic capture)
-
-## If You Are Helping With Setup
-
-Most people can skip this section. It is for the person preparing the service or desktop client.
-
-### Faster-whisper settings
-
-These settings control local speech transcription:
-
-For a full beginner setup walkthrough (Python + pip + ffmpeg + smoke test), see `README.md` in the section `faster-whisper Python setup (beginner-friendly)`.
-
-- `FASTER_WHISPER_PYTHON_BIN`: which Python command should run the transcription helper, usually `python3`
-- `FASTER_WHISPER_MODEL`: which speech model to use, such as `base.en`
-- `FASTER_WHISPER_LANGUAGE`: language hint, such as `en`
-- `FASTER_WHISPER_DEVICE`: where to run transcription, usually `auto`
-- `FASTER_WHISPER_COMPUTE_TYPE`: performance setting, usually `int8`
-- `FASTER_WHISPER_TIMEOUT_MS`: how long to wait before a transcription attempt times out
-
-### Sonos settings
-
-Use these only if replies should play through Sonos:
-
-- Sonos is optional and requires a separate relay service on your LAN
-- OpenClaw Voice does not include that relay service; it sends generated audio to the configured relay URL
-
-- `SONOS_RELAY_URL` or `SONOS_RELAY_PI_URL`: primary local relay address that accepts generated audio
-- `SONOS_RELAY_FALLBACK_URL`: optional secondary relay used during migration/failover
-- `SONOS_RELAY_AUTH_BEARER`: optional relay bearer token
-- `SONOS_RELAY_TIMEOUT_MS`: timeout per relay attempt before trying the fallback relay
-- `SONOS_ROOM_DEFAULT`: fallback room name when a browser or desktop client does not send one
-
-If your team needs a starting point for relay implementation, a common base is `jishi/node-sonos-http-api` with a small adapter route that accepts this project's relay payload (`room`, `text`, `audioMimeType`, `audioBase64`).
-
-If a household uses more than one Sonos room, users can enter a room name in the browser setting **Sonos Room (optional)** or the desktop client can send `VOICE_CLIENT_SONOS_ROOM`.
-
-### Desktop client settings
-
-Use these when running the always-on desktop client:
-
-- `VOICE_CLIENT_SERVICE_URL`: base address of the voice service
-- `VOICE_CLIENT_API_PATH`: request path, usually `/api/voice/turn`
-- `VOICE_CLIENT_BEARER_TOKEN`: token used by the desktop client; if blank, it can reuse `VOICE_API_BEARER_TOKEN`
-- `VOICE_CLIENT_SESSION_ID`: friendly label for that desktop station
-- `VOICE_CLIENT_SONOS_ROOM`: default Sonos room for that desktop station
-- `VOICE_CLIENT_OUTPUT_DIR`: folder used to store temporary recordings and generated reply audio (defaults to your system temp directory)
-- `VOICE_CLIENT_RECORD_COMMAND`: command used to capture a short recording
-- `VOICE_CLIENT_PLAY_COMMAND`: optional command to play reply audio locally
-- `VOICE_CLIENT_WAKE_MODE`: `auto`, `wake-word`, `hotkey`, `manual`, or `ambient`
-- `VOICE_CLIENT_AMBIENT_MODE`: optional boolean flag to add ambient timed captures without switching away from the normal mode
-- `VOICE_CLIENT_AMBIENT_INTERVAL_MS`: interval between ambient captures
-- `VOICE_CLIENT_AMBIENT_AUTO_START`: whether ambient loop starts immediately
-- `VOICE_CLIENT_WAKE_WORD_ENABLED`: whether the desktop client should listen for wake-word triggers
-- `VOICE_CLIENT_HOTKEY_ENABLED`: whether the desktop client should listen for the fallback hotkey
-- `VOICE_CLIENT_WAKE_COOLDOWN_MS`: minimum gap between wake triggers so the client does not retrigger too quickly
-- `VOICE_CLIENT_WAKE_BEEP_ENABLED`: whether to play a confirmation beep on wake trigger
-- `VOICE_CLIENT_WAKE_BEEP_COMMAND`: optional custom command run after the terminal beep
-- `PORCUPINE_ACCESS_KEY`: credential for Picovoice wake-word detection
-- `VOICE_CLIENT_PORCUPINE_KEYWORD_PATH`: absolute path to the `.ppn` wake-word file (for example the trained `Hey OpenClaw` keyword)
-- `VOICE_CLIENT_PORCUPINE_MODEL_PATH`: optional absolute path to a Porcupine model file when you are not using the default
-- `VOICE_CLIENT_PORCUPINE_SENSITIVITY`: wake-word sensitivity value used by the detector
-- `VOICE_CLIENT_PORCUPINE_DEVICE_INDEX`: optional input device index used by Porcupine
-- `VOICE_CLIENT_HOTKEY_KEY` and `VOICE_CLIENT_HOTKEY_MODIFIERS`: fallback global hotkey combination
-
-If you are not using Sonos or the desktop client, you can leave those optional values blank.
-
-### TTS provider settings
-
-This version adds local Piper as a TTS option and fallback:
-
-- `TTS_PROVIDER`: `edge`, `piper`, or `auto`
-- `TTS_FALLBACK_PROVIDER`: currently supports `piper` fallback when `TTS_PROVIDER=edge`
-- `PIPER_BIN`: Piper executable name or absolute path when it is not available as `piper`
-- `PIPER_MODEL_PATH`: required when Piper is used
-- Optional Piper tuning: `PIPER_SPEAKER_ID`, `PIPER_LENGTH_SCALE`, `PIPER_NOISE_SCALE`, `PIPER_NOISE_W`, `PIPER_SENTENCE_SILENCE`
-
-If administrators want local-only speech output, they should set `TTS_PROVIDER=piper`, install the Piper CLI on the server, and point `PIPER_MODEL_PATH` at a downloaded voice model.
-
-Quick Piper operator checks:
-
-- Install source: <https://github.com/rhasspy/piper/releases>
-- Voice models: <https://huggingface.co/rhasspy/piper-voices> (for example `en_US-lessac-medium.onnx`)
-- This project uses `PIPER_BIN` as the executable env var (equivalent to `PIPER_EXECUTABLE` in some external guides)
-- Smoke test:
-
-  ```bash
-  echo "Piper smoke test" | "${PIPER_BIN:-piper}" --model "$PIPER_MODEL_PATH" --output_file /tmp/piper-smoke.wav
-  ls -lh /tmp/piper-smoke.wav
-  ```
-
-Piper synthesis returns WAV audio, while Edge synthesis returns MP3 audio.
-
-### Proactive alerts (doorbell/calendar/energy)
-
-Administrators can trigger Sonos announcements without waiting for a user voice turn by calling `POST /api/voice/alerts` with bearer auth and a JSON payload containing `message` (or `text`) and optional `title`, `room`, and `source`.
-
-They can verify the configured primary and fallback relay endpoints with `GET /api/sonos/relay/health` before relying on proactive announcements.
-
-## Tips For Best Results
+## Tips for best results
 
 - Speak in a normal voice and stay close to the microphone.
 - Wait for the ready message before starting a new request.
@@ -237,6 +112,7 @@ Check these first:
 
 - Your browser allowed microphone access
 - The **Access Token** field is filled in
+- The **Voice Service URL** is the one your host gave you
 - Your browser supports microphone recording
 
 If needed, refresh the page and allow microphone access again.
@@ -247,20 +123,20 @@ Your browser or device blocked microphone access. Open your browser settings, al
 
 ### It says the access token is missing or invalid
 
-The access token is blank, expired, or typed incorrectly. Paste the token again exactly as provided in **Access Token**. If it still fails, ask your administrator for a fresh token.
+The token is blank, expired, or typed incorrectly. Paste it again exactly as provided. If it still fails, ask your host for a fresh token.
 
 ### The request fails after I record
 
-This usually means the voice service, OpenClaw connection, or internet connection had a problem.
+This usually means the service, OpenClaw connection, or internet connection had a problem.
 
 Try this:
 
 1. Check that you are still online.
 2. Record a shorter request.
 3. Wait a few seconds and try again.
-4. Contact your administrator if the problem keeps happening.
+4. Contact your host if the problem keeps happening.
 
-If you can share technical details with your administrator, include the exact error text shown on screen. Common server-side messages are `Voice pipeline failed`, `OpenClaw request failed (...)`, `faster_whisper_failed`, and Sonos relay errors.
+If you can share technical details, include the exact error text shown on screen.
 
 ### The reply text appears, but I do not hear audio
 
@@ -272,18 +148,8 @@ If you can share technical details with your administrator, include the exact er
 ### Sonos playback does not start
 
 - Check that the saved room name matches the Sonos room exactly.
-- If your setup uses a shared default room, ask your administrator which room is configured.
-- If the desktop client is sending audio to Sonos, confirm `VOICE_CLIENT_SONOS_ROOM` was set correctly.
-- Ask your administrator to check whether the external Sonos relay service is online and reachable from OpenClaw Voice.
-
-### The desktop client does not respond
-
-- Make sure the terminal window is still open.
-- Try the wake phrase or configured hotkey first, then press **Enter** as fallback.
-- If the client says wake-word setup is unavailable, ask your administrator to recheck `PORCUPINE_ACCESS_KEY` and the keyword file path.
-- If the client says hotkey setup is unavailable, ask your administrator whether the desktop OS supports global keyboard capture for this session.
-- If you see an authentication or missing token error, ask your administrator to recheck the desktop client environment settings.
-- Restart the desktop client if it was not configured as a background service.
+- If your setup uses a shared default room, ask your host which room to use.
+- Ask your host to check whether the external Sonos relay service is online.
 
 ### The transcription is wrong
 
@@ -298,13 +164,13 @@ Settings are stored in your browser's local storage.
 
 - Avoid private/incognito windows for daily use.
 - Do not clear site data for the OpenClaw Voice page.
-- If you changed browsers/devices, enter settings again on that browser/device.
+- If you changed browsers or devices, enter settings again there.
 
 ## FAQ
 
 ### Do I need to install anything?
 
-Usually no. The main experience still runs in a browser, so most people only need the web link, microphone permission, and an access token.
+Usually no. Most people only need the web link, microphone permission, and an access token.
 
 ### Do I need to keep holding the button the whole time?
 
@@ -312,24 +178,16 @@ Yes. This version uses push-to-talk. Hold the button while speaking, then releas
 
 ### What do Session ID and Sonos Room mean?
 
-**Session ID** is an optional conversation context label sent to OpenClaw. **Sonos Room** is the optional speaker target used for Sonos playback. If you were not told to use either value, you can leave both blank.
+They are optional extra settings. If your host did not tell you to use them, leave them blank.
 
 ### Can I use the keyboard instead of pressing the button?
 
 Yes. If the talk button is selected, you can hold **Space** or **Enter** to record and release the key to send your request.
 
-### Can I talk to it in the background?
-
-Yes in desktop mode. This version adds wake-word, hotkey, and ambient triggers for always-on usage when configured by your administrator.
-
 ### Is there a desktop option?
 
-Yes. Administrators can run the desktop voice client as a persistent process on a desktop or mini-PC. Ask your administrator if your setup includes this mode.
-
-### Can replies play on Sonos?
-
-Yes, if your administrator connected OpenClaw Voice to a Sonos relay on your local network. You may need to enter a room name, such as `Kitchen` or `Office`, in Settings.
+Yes, but it is a separate path. If someone already prepared the always-on desktop client for you, use `docs/desktop-client-walkthrough.md`.
 
 ### Who should I contact if setup does not work?
 
-Contact the person who gave you the OpenClaw Voice link or token. They can confirm the service is online and verify your settings.
+Contact the person who gave you the OpenClaw Voice link or token.

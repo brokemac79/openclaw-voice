@@ -4,6 +4,29 @@ This page explains every `.env` variable in beginner-friendly language.
 
 Most people only need two values to get started: `VOICE_API_BEARER_TOKEN` and `OPENCLAW_URL`. Everything else is optional or advanced. Skip any section marked "advanced / optional" if you are doing a basic browser-only setup.
 
+## No-guess URL and token map
+
+Use this section when you are unsure which URL/token goes in which field.
+
+| You are setting | Source of truth | Paste into |
+| --- | --- | --- |
+| Voice access token for this app | Value you create in `.env` as `VOICE_API_BEARER_TOKEN` | Browser **Access Token** field and desktop `VOICE_CLIENT_BEARER_TOKEN` (or let desktop reuse `VOICE_API_BEARER_TOKEN`) |
+| Upstream OpenClaw API URL | Upstream HTTP endpoint (for example `http://192.168.1.10:3000/api/chat`) | `.env` -> `OPENCLAW_URL` |
+| Upstream OpenClaw API auth token (optional) | Token from your OpenClaw/gateway host | `.env` -> `OPENCLAW_AUTH_BEARER` |
+
+If upstream only gives you a websocket URL (example: `ws://192.168.1.10:18789`):
+
+1. Keep the same host/IP.
+2. Switch protocol to `http://` or `https://`.
+3. Use the upstream chat API route on that host (commonly `/api/chat`).
+
+Example:
+
+- given: `ws://192.168.1.10:18789`
+- set: `OPENCLAW_URL=http://192.168.1.10:3000/api/chat`
+
+Do not put `ws://` or `wss://` into `OPENCLAW_URL`.
+
 Columns:
 
 - What it is: plain-English purpose
@@ -17,7 +40,7 @@ Columns:
 | --- | --- | --- | --- | --- |
 | `PORT` | Local port for the voice server web page and API | `8787` | All self-hosted setups | Pick an open local port |
 | `VOICE_API_BEARER_TOKEN` | Password-like token browsers and clients must send to use the voice API | `mytoken123` | All self-hosted setups | Choose any string yourself, then reuse that same value anywhere the client asks for the token |
-| `OPENCLAW_URL` | HTTP endpoint for your OpenClaw-compatible chat API | `http://192.168.1.10:3000/api/chat` | All self-hosted setups | Look for the OpenClaw address shown when OpenClaw starts, then use the matching `http://` or `https://` API endpoint on that host |
+| `OPENCLAW_URL` | HTTP endpoint for your OpenClaw-compatible chat API | `http://192.168.1.10:3000/api/chat` | All self-hosted setups | Use the upstream HTTP API endpoint on the same host; if upstream only shows `ws://...`, keep that host and switch to the matching `http://...` chat API path |
 | `OPENCLAW_METHOD` | HTTP method used for upstream requests | `POST` | All self-hosted setups | Usually leave the default unless your upstream says otherwise |
 | `OPENCLAW_INPUT_FIELD` | JSON field name used for the sent prompt text | `input` | All self-hosted setups | Your upstream API contract |
 | `OPENCLAW_OUTPUT_FIELD` | JSON field name read from the upstream reply | `response` | All self-hosted setups | Your upstream API contract |
@@ -130,3 +153,8 @@ Skip this section unless you want a spoken wake phrase.
 - `bearer token`: a secret string used like a password for API requests
 - `absolute path`: the full path to a file from the top of the drive
 - `wake word`: the spoken phrase that starts recording, such as "Hey OpenClaw"
+
+Token reminder:
+
+- `VOICE_API_BEARER_TOKEN` is for clients calling this voice server.
+- `OPENCLAW_AUTH_BEARER` is for this voice server calling upstream OpenClaw.

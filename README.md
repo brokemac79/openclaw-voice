@@ -1,36 +1,66 @@
 # openclaw-voice
 
-OpenClaw Voice lets you talk to your OpenClaw assistant in plain language and hear a spoken reply from your browser, desktop client, or Sonos setup.
+OpenClaw Voice is a voice add-on for OpenClaw. It lets you speak to OpenClaw and hear the reply back on a web page, a desktop computer, or a Sonos speaker.
 
-> Just want to use OpenClaw Voice in your browser? Go to `docs/user-guide.md` - no terminal required.
+This repository supports two different kinds of people:
 
-Voice interface for OpenClaw with:
+- people who just want to use an OpenClaw Voice setup someone else already runs
+- people who want to run the service on their own machine
 
-1. browser push-to-talk client
-2. local faster-whisper speech-to-text
-3. OpenClaw upstream query
-4. Edge TTS or local Piper TTS generation
-5. optional Sonos relay output
-6. optional desktop persistent voice client with wake word
-7. proactive alert API for Sonos announcements
+## Start here first
 
-## What is new in this version
+If you are a non-technical user, start at `docs/user-guide.md`.
 
-- Local STT via `faster-whisper` (no OpenAI Whisper dependency)
-- Sonos output integration through a local HTTP relay endpoint
-- Desktop client (`npm run desktop:client`) for non-browser usage
-- Wake word activation (`Hey OpenClaw`) via Picovoice Porcupine
-- Global hotkey fallback trigger when wake word is unavailable
-- Wake confirmation beep on trigger
-- Proactive Sonos alert endpoint (`POST /api/voice/alerts`) for doorbell/calendar/energy events
-- Ambient desktop loop mode for always-on background capture
-- Switchable TTS providers (`TTS_PROVIDER=edge|piper|auto`) with Piper fallback support
-- Dual-relay support for Sonos migration (`SONOS_RELAY_URL` / `SONOS_RELAY_PI_URL` + `SONOS_RELAY_FALLBACK_URL`)
+Do not use deployment/operator guides unless you are the person running the server.
+If someone else hosts your setup, stay on the browser-use path.
+
+Choose one path and ignore the others for now.
+
+## Self-hosting decision check
+
+Read this before you open any setup guide:
+
+| If this sounds like you... | Choose this path |
+| --- | --- |
+| I just want to talk to OpenClaw in a browser and do not want to install anything. | Stop here and use `docs/user-guide.md`. |
+| I can follow copy-and-paste terminal steps, install software, edit a `.env` file, and spend about 30 to 60 minutes on first-time setup. | Use `docs/host-it-yourself.md`. |
+| I already have the server working on my own machine and now want it reachable from another device. I am comfortable keeping a terminal open and spending another 20 to 40 minutes on background service and tunnel steps. | Use `docs/deployment-guide.md`. |
+
+If terminal commands, config files, or troubleshooting feel out of bounds for you, the browser guide is the right stopping point.
+
+- I only want to talk to OpenClaw in my browser: go to `docs/user-guide.md`
+- I want to run OpenClaw Voice on my own computer: go to `docs/host-it-yourself.md`
+- I want it to stay running and work from another device: go to `docs/deployment-guide.md`
+- I want an always-on desktop client with wake word or hotkey: go to `docs/desktop-client-walkthrough.md`
+- I am already set up and only need setting explanations: go to `docs/env-reference.md`
+
+## Which one are you?
+
+```text
+Do you want to use an existing OpenClaw Voice link?
+|
++-- Yes -> Read docs/user-guide.md
+|
++-- No -> Do you want to host the service yourself?
+          |
+          +-- Yes -> Read docs/host-it-yourself.md
+          |
+          +-- No, I only need the always-on desktop client -> Read docs/desktop-client-walkthrough.md
+```
+
+## What you can do with this
+
+- Talk to OpenClaw by voice in your browser with push-to-talk.
+- Run it on your own machine so your speech pipeline stays local.
+- Hear replies on your computer and optionally play them on Sonos.
+- Keep an always-on desktop client running with wake word, hotkey, or manual trigger.
+- Send proactive spoken alerts (for example doorbell, reminders, or energy events).
 
 ## Start here by audience
 
-- If terminal commands are not your thing, use the browser-only path in `docs/user-guide.md` or ask your host for the web link and token.
-- Just use it: `docs/user-guide.md`
+- If terminal commands are not your thing, start at `docs/just-use-it.md`.
+- Non-technical landing page with three paths: `docs/just-use-it.md`
+- Browser guide (quick start + troubleshooting): `docs/user-guide.md`
 - Host it yourself: `docs/host-it-yourself.md`
 - Desktop client operators: `docs/desktop-client-walkthrough.md`
 - Need every `.env` setting explained: `docs/env-reference.md`
@@ -54,10 +84,25 @@ You speak -> speech-to-text -> OpenClaw -> text-to-speech -> audio reply
 
 ## End-user documentation
 
-- See `docs/user-guide.md` for user-focused setup and operation.
+- See `docs/just-use-it.md` for the primary non-technical entry point.
+- See `docs/user-guide.md` for the primary end-user browser path and troubleshooting.
 - See `docs/desktop-client-walkthrough.md` for the desktop client end-to-end flow.
 - See `docs/host-it-yourself.md` for beginner-friendly hosting steps.
+- See `docs/deployment-guide.md` for keeping the service running and reachable from other devices.
 - See `docs/env-reference.md` for a variable-by-variable `.env` guide.
+
+## For developers: implementation details
+
+- Local STT via `faster-whisper` (no OpenAI Whisper dependency)
+- Sonos output integration through a local HTTP relay endpoint
+- Desktop client (`npm run desktop:client`) for non-browser usage
+- Wake word activation (`Hey OpenClaw`) via Picovoice Porcupine
+- Global hotkey fallback trigger when wake word is unavailable
+- Wake confirmation beep on trigger
+- Proactive Sonos alert endpoint (`POST /api/voice/alerts`) for doorbell/calendar/energy events
+- Ambient desktop loop mode for always-on background capture
+- Switchable TTS providers (`TTS_PROVIDER=edge|piper|auto`) with Piper fallback support
+- Dual-relay support for Sonos migration (`SONOS_RELAY_URL` / `SONOS_RELAY_PI_URL` + `SONOS_RELAY_FALLBACK_URL`)
 
 ## Prerequisites (single checklist)
 
@@ -125,8 +170,27 @@ If you only want to talk to OpenClaw in a browser, stop here and use `docs/user-
     OPENCLAW_OUTPUT_FIELD=response
     ```
 
-    - `VOICE_API_BEARER_TOKEN`: choose any password-like string yourself, such as `mytoken123`. It just needs to match anywhere else you enter it.
-    - `OPENCLAW_URL`: find the OpenClaw address shown when OpenClaw starts, often something like `ws://192.168.1.10:18789`, then switch to the matching HTTP API endpoint on that same machine. For example, `ws://192.168.1.10:18789` usually maps to something like `http://192.168.1.10:3000/api/chat`. Ask your OpenClaw host if you are unsure of the exact path.
+     - `VOICE_API_BEARER_TOKEN`: choose any password-like string yourself, such as `mytoken123`. It just needs to match anywhere else you enter it.
+     - `OPENCLAW_URL`: use the upstream HTTP API endpoint, never `ws://`. If upstream shows `ws://192.168.1.10:18789`, keep host `192.168.1.10` and set the matching `http://...` chat endpoint such as `http://192.168.1.10:3000/api/chat`.
+
+     Token placement rule:
+
+     - `VOICE_API_BEARER_TOKEN` is the token browser/desktop clients send to this app.
+     - `OPENCLAW_AUTH_BEARER` (optional) is the token this app sends to upstream OpenClaw.
+     - Do not assume one token works for both.
+
+     Upstream quick check before starting this app:
+
+     ```bash
+     curl -X POST "$OPENCLAW_URL" \
+       -H "Content-Type: application/json" \
+       -H "Authorization: Bearer $OPENCLAW_AUTH_BEARER" \
+       -d '{"input":"ping"}'
+     ```
+
+     If this call returns JSON, your upstream URL/token pairing is likely correct.
+
+     Need a plain-English walkthrough for finding the real upstream URL and token requirements? Use `docs/host-it-yourself.md#how-do-i-find-my-real-openclaw-url`.
 
 5. Start server:
 
@@ -190,10 +254,12 @@ Why: this keeps Python packages for this project isolated from system-wide packa
 
 `faster-whisper` relies on ffmpeg for decoding common input formats.
 
-- macOS: if you do not already have Homebrew, install it from <https://brew.sh> first. Homebrew is a free package manager for command-line tools. Then run `brew install ffmpeg`.
+- macOS (no PATH editing): `brew install ffmpeg`
 - Ubuntu/Debian: `apt` is usually already installed. Run `sudo apt install ffmpeg`.
 - Fedora/RHEL: `sudo dnf install -y ffmpeg`
-- Windows: if you use Chocolatey, run `choco install ffmpeg -y`. If not, use the direct download options at <https://ffmpeg.org/download.html>.
+- Windows (no PATH editing): `winget install --id Gyan.FFmpeg -e`
+
+Fallback if package manager install is not available: download a ZIP build from <https://ffmpeg.org/download.html> and run ffmpeg by full path (for example `C:\ffmpeg\...\ffmpeg.exe -version`) without editing PATH.
 
 Verify it is available:
 

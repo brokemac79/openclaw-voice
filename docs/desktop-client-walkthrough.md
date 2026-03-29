@@ -2,7 +2,13 @@
 
 Use this guide if you want an always-on command-line client that can listen for a wake word, a hotkey, or a manual Enter key trigger.
 
-If you only want the browser experience, use `docs/user-guide.md` instead.
+## Start here first
+
+Choose this guide only if the OpenClaw Voice server already exists or you are ready to run one yourself.
+
+- I only want the browser experience: use `docs/user-guide.md`
+- I still need to install the OpenClaw Voice server: use `docs/host-it-yourself.md`
+- I want the always-on desktop client: stay here
 
 ## Who should use the desktop client
 
