@@ -6,7 +6,7 @@ This is the **Just use it** guide for people who mainly want to use an already-r
 
 If terminal commands make you uncomfortable, stay on the browser-only path in this guide or ask the person hosting OpenClaw Voice for your web link and token.
 
-Phase 4 supports both the browser UI and an optional desktop client with wake-word, hotkey, and ambient always-on activation. Speech transcription runs locally with faster-whisper.
+This version supports both the browser UI and an optional desktop client with wake-word, hotkey, and ambient always-on activation. Speech transcription runs locally with faster-whisper.
 
 If you are deploying or administering the service, use `README.md` instead. This guide is for end users only.
 
@@ -41,7 +41,7 @@ Best experience:
 - Edge (desktop)
 - Safari (iOS 16.4+ and macOS Safari 16.4+)
 
-Safari 16.4+ is supported with automatic audio MIME fallback handling during upload.
+Safari 16.4+ is supported and audio upload works automatically.
 
 Also supported:
 
@@ -89,6 +89,7 @@ If your administrator set up the desktop voice client for you:
 
 1. Open the terminal or command window they provided.
 2. Start the client with `npm run desktop:client` unless they already configured it to start automatically.
+   Type this into the same terminal window from inside the project folder.
 3. Wait for the message that says `OpenClaw desktop voice client started.`
 4. Say the configured wake phrase (for example **Hey OpenClaw**) or use the fallback hotkey your administrator configured.
 5. Listen for the short confirmation beep, then speak naturally.
@@ -191,7 +192,7 @@ If you are not using Sonos or the desktop client, you can leave those optional v
 
 ### TTS provider settings
 
-Phase 4 adds local Piper as a TTS option and fallback:
+This version adds local Piper as a TTS option and fallback:
 
 - `TTS_PROVIDER`: `edge`, `piper`, or `auto`
 - `TTS_FALLBACK_PROVIDER`: currently supports `piper` fallback when `TTS_PROVIDER=edge`
@@ -319,7 +320,7 @@ Yes. If the talk button is selected, you can hold **Space** or **Enter** to reco
 
 ### Can I talk to it in the background?
 
-Yes in desktop mode. Phase 4 adds wake-word, hotkey, and ambient triggers for always-on usage when configured by your administrator.
+Yes in desktop mode. This version adds wake-word, hotkey, and ambient triggers for always-on usage when configured by your administrator.
 
 ### Is there a desktop option?
 

@@ -1,6 +1,8 @@
-# openclaw-voice (Phase 4)
+# openclaw-voice
 
 OpenClaw Voice lets you talk to your OpenClaw assistant in plain language and hear a spoken reply from your browser, desktop client, or Sonos setup.
+
+> Just want to use OpenClaw Voice in your browser? Go to `docs/user-guide.md` - no terminal required.
 
 Voice interface for OpenClaw with:
 
@@ -12,7 +14,7 @@ Voice interface for OpenClaw with:
 6. optional desktop persistent voice client with wake word
 7. proactive alert API for Sonos announcements
 
-## Phase 4 highlights
+## What is new in this version
 
 - Local STT via `faster-whisper` (no OpenAI Whisper dependency)
 - Sonos output integration through a local HTTP relay endpoint
@@ -70,7 +72,7 @@ Core requirements:
 
 Speech pipeline requirements:
 
-- Python 3 + pip
+- Python 3.10 or later + pip
 - `faster-whisper` Python package
 - `ffmpeg` (audio decode dependency used by faster-whisper)
 
@@ -124,7 +126,7 @@ If you only want to talk to OpenClaw in a browser, stop here and use `docs/user-
     ```
 
     - `VOICE_API_BEARER_TOKEN`: choose any password-like string yourself, such as `mytoken123`. It just needs to match anywhere else you enter it.
-    - `OPENCLAW_URL`: find the OpenClaw address shown when OpenClaw starts, often something like `ws://192.168.1.10:18789`, then use the matching HTTP API endpoint on that host.
+    - `OPENCLAW_URL`: find the OpenClaw address shown when OpenClaw starts, often something like `ws://192.168.1.10:18789`, then switch to the matching HTTP API endpoint on that same machine. For example, `ws://192.168.1.10:18789` usually maps to something like `http://192.168.1.10:3000/api/chat`. Ask your OpenClaw host if you are unsure of the exact path.
 
 5. Start server:
 
@@ -138,12 +140,14 @@ If you only want to talk to OpenClaw in a browser, stop here and use `docs/user-
 
 If you have never installed Python tooling before, follow these steps exactly on the same machine that runs the Node server.
 
-### 1) Install Python 3 and pip
+### 1) Install Python 3.10 or later and pip
 
 - Python download page: <https://www.python.org/downloads/>
 - pip installation/upgrade docs: <https://pip.pypa.io/en/stable/installation/>
 
 Verify both commands work:
+
+- `python3 --version` should report Python 3.10 or newer.
 
 ```bash
 python3 --version
@@ -254,6 +258,8 @@ curl http://localhost:8787/health
 ```
 
 Expected: `{"ok":true}`
+
+`curl` is a terminal command available by default on macOS, Linux, and Windows 10+. If you prefer, open `http://localhost:8787/health` in your browser instead - you should see `{"ok":true}`.
 
 2) Browser microphone capture:
 
@@ -432,7 +438,7 @@ Important: Piper outputs WAV (`audio/wav`). Edge TTS outputs MP3 (`audio/mpeg`).
 
 Advanced / optional: skip this unless you want replies or alerts to play through Sonos.
 
-Phase 4 supports a gradual relay move without changing clients.
+This version supports a gradual relay move without changing clients.
 
 Important: Sonos playback is optional and needs a separate relay service running on your local network. This app does not include built-in Sonos transport; it only sends generated audio to your relay endpoint.
 
@@ -471,6 +477,7 @@ OpenClaw options:
 
 - Use `http://` or `https://` only.
 - Do not use `ws://` or `wss://`.
+- If OpenClaw shows `ws://192.168.1.10:18789` at startup, the HTTP API endpoint is typically `http://192.168.1.10:3000/api/chat`. Ask your OpenClaw host if you are unsure of the exact path.
 
 Default request body sent to your upstream endpoint:
 

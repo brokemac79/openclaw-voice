@@ -14,8 +14,8 @@ If you only want the browser experience, use `docs/user-guide.md` instead.
 
 You need:
 
-- a working OpenClaw Voice server
-- `npm install` already completed
+- a working OpenClaw Voice server (see `docs/host-it-yourself.md` if you still need to set one up)
+- `npm install` already completed (see `docs/host-it-yourself.md` if you have not installed the project packages yet)
 - `sox` installed on the desktop machine
 - a valid voice bearer token
 
@@ -41,6 +41,8 @@ sox --version
 
 ## 2. Fill the desktop-related `.env` values
 
+Open `.env` in any plain text editor - Notepad on Windows, TextEdit on macOS, or gedit on Linux. If you cannot find it, make sure hidden files are visible in your file explorer.
+
 Most first-time setups need these values:
 
 - `VOICE_CLIENT_SERVICE_URL=http://127.0.0.1:8787`
@@ -51,7 +53,16 @@ Optional but common:
 
 - `VOICE_CLIENT_SESSION_ID=OfficeDesk`
 - `VOICE_CLIENT_SONOS_ROOM=Kitchen`
-- `VOICE_CLIENT_PLAY_COMMAND=afplay "{output}"` on macOS or another local audio player command
+- `VOICE_CLIENT_PLAY_COMMAND` for local reply playback, for example:
+
+```dotenv
+# macOS
+VOICE_CLIENT_PLAY_COMMAND=afplay "{output}"
+# Linux
+VOICE_CLIENT_PLAY_COMMAND=mpg123 "{output}"
+# Windows
+VOICE_CLIENT_PLAY_COMMAND=powershell -NoProfile -Command "Start-Process '{output}'"
+```
 
 If you want wake word support, also set:
 

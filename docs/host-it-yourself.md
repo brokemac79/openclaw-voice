@@ -33,12 +33,13 @@ Use the rest of this guide only if you are setting up the server yourself.
 - how to start the voice server
 - how to fix the most common first-run errors
 
-> Before you start:
-> - Python 3.10 or later installed
-> - Node.js installed for the browser frontend
-> - `ffmpeg` installed
-> - OpenClaw already running somewhere and you have its address
-> - a terminal, Command Prompt, or PowerShell window open
+Before you start, confirm all of these:
+
+- [ ] Python 3.10 or later installed
+- [ ] Node.js 20 or later installed
+- [ ] `ffmpeg` installed
+- [ ] OpenClaw is already running somewhere and you have its address
+- [ ] A terminal, Command Prompt, or PowerShell window is open
 
 ## Beginner quick start
 
@@ -82,6 +83,8 @@ cd $HOME\Downloads\openclaw-voice
 ```
 
 Success check: running `pwd` (macOS/Linux) or `Get-Location` (PowerShell) should show the project folder.
+
+`pwd` prints your current folder path. It should end in the project folder name, for example `/Users/you/Downloads/openclaw-voice`.
 
 ### 4. Install Node.js dependencies
 
@@ -137,7 +140,7 @@ OPENCLAW_OUTPUT_FIELD=response
 ```
 
 - `VOICE_API_BEARER_TOKEN`: choose any password-like text yourself, such as `mytoken123`. It does not come from a website. It just needs to match anywhere else you enter the same token.
-- `OPENCLAW_URL`: this is the OpenClaw address to connect to. You can usually find the host address in the OpenClaw startup window or logs when it starts, often shown as something like `ws://192.168.1.10:18789`. For this file, use the matching HTTP API address on that host, such as `http://192.168.1.10:3000/api/chat`, not the `ws://` address itself.
+- `OPENCLAW_URL`: this is the OpenClaw address to connect to. You can usually find the host address in the OpenClaw startup window or logs when it starts, often shown as something like `ws://192.168.1.10:18789`. For this file, use the matching HTTP API address on that host, such as `http://192.168.1.10:3000/api/chat`, not the `ws://` address itself. If you are unsure of the exact path, ask the person hosting OpenClaw.
 
 Use `docs/env-reference.md` for what each value means, where to get it, and example values.
 
@@ -145,7 +148,7 @@ Use `docs/env-reference.md` for what each value means, where to get it, and exam
 
 OpenClaw Voice uses local speech-to-text through Python and `faster-whisper`.
 
-Install Python 3 and check it:
+Install Python 3.10 or later and check it:
 
 ```bash
 python3 --version
@@ -153,6 +156,8 @@ python3 -m pip --version
 ```
 
 What it does: confirms Python and pip are available before you install speech-to-text tools.
+
+Success check: `python3 --version` should report Python 3.10 or newer.
 
 Windows PowerShell alternative:
 
@@ -333,7 +338,7 @@ Fix:
 
 Diagnosis: `OPENCLAW_URL` points at the wrong place.
 
-Plain-English rule: use the real HTTP API address, not a website home page and not a `ws://` websocket address. If OpenClaw shows you a `ws://` address at startup, use that to identify the right machine, then switch to the matching HTTP API endpoint.
+Plain-English rule: use the real HTTP API address, not a website home page and not a `ws://` websocket address. If OpenClaw shows you a `ws://` address at startup, use that to identify the right machine, then switch to the matching HTTP API endpoint. For example, `ws://192.168.1.10:18789` often maps to `http://192.168.1.10:3000/api/chat`.
 
 Fix:
 

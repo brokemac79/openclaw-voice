@@ -2,6 +2,8 @@
 
 This page explains every `.env` variable in beginner-friendly language.
 
+Most people only need two values to get started: `VOICE_API_BEARER_TOKEN` and `OPENCLAW_URL`. Everything else is optional or advanced. Skip any section marked "advanced / optional" if you are doing a basic browser-only setup.
+
 Columns:
 
 - What it is: plain-English purpose
@@ -55,7 +57,7 @@ Skip this section unless you want local Piper output.
 | Variable | What it is | Example value | Needed for | Where to get it |
 | --- | --- | --- | --- | --- |
 | `PIPER_BIN` | Piper executable name or full path | `piper` | Piper output | Piper install location |
-| `PIPER_MODEL_PATH` | Path to the downloaded Piper `.onnx` voice model | `/opt/piper/en_US-lessac-medium.onnx` | Piper output | Download a model from Piper voices |
+| `PIPER_MODEL_PATH` | Path to the downloaded Piper `.onnx` voice model | `/opt/piper/en_US-lessac-medium.onnx` (macOS/Linux) or `C:\piper\en_US-lessac-medium.onnx` (Windows) | Piper output | Download a model from Piper voices |
 | `PIPER_SPEAKER_ID` | Speaker index for multi-speaker models | `0` | Some Piper models only | Piper model docs |
 | `PIPER_LENGTH_SCALE` | Slows down or speeds up Piper speech duration | `1.0` | Optional Piper tuning | Tune by listening |
 | `PIPER_NOISE_SCALE` | Controls voice variation/noise | `0.667` | Optional Piper tuning | Tune by listening |
