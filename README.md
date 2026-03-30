@@ -8,8 +8,11 @@ This repository supports two different kinds of people:
 - people who want to run the service on their own machine
 
 
-<!-- TODO: Add screenshot or terminal demo here -->
-<!-- A screenshot of the browser push-to-talk UI or a terminal recording of a voice turn would go here. -->
+![OpenClaw Voice Assistant — Settings](docs/images/IMG_4258.jpeg)
+*Settings page: configure your Voice Service URL, Access Token, and Session ID.*
+
+![OpenClaw Voice Assistant — Hold to Talk](docs/images/IMG_4259.jpeg)
+*Hold to Talk: push-to-talk UI with live transcription and response display.*
 
 ## Start here first
 
