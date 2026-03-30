@@ -27,7 +27,7 @@ You need:
 
 Optional advanced extras:
 
-- Porcupine wake word files for hands-free triggers
+- a wake word provider for hands-free triggers (Porcupine or OpenWakeWord)
 - a local playback command if you want replies to play on the desktop machine
 - a Sonos room if replies should route to Sonos
 
@@ -110,10 +110,35 @@ VOICE_CLIENT_PLAY_COMMAND=powershell -NoProfile -NonInteractive -WindowStyle Hid
 
 On Windows, you can also leave `VOICE_CLIENT_PLAY_COMMAND` unset. The desktop client defaults to a hidden playback command and auto-rewrites legacy `Start-Process` values.
 
-If you want wake word support, also set:
+If you want wake word support, choose a provider first:
 
-- `PORCUPINE_ACCESS_KEY`
-- `VOICE_CLIENT_PORCUPINE_KEYWORD_PATH`
+### Option A — OpenWakeWord (free, no account required)
+
+OpenWakeWord runs fully locally with no API key. Install it first:
+
+```bash
+pip install openwakeword pyaudio numpy
+```
+
+Then set in `.env`:
+
+```dotenv
+VOICE_CLIENT_WAKE_PROVIDER=openwakeword
+VOICE_CLIENT_OWW_MODEL=hey_jarvis
+VOICE_CLIENT_OWW_THRESHOLD=0.5
+```
+
+Available pre-trained models: `hey_jarvis`, `alexa`, `hey_mycroft`, `hey_rhasspy`. You can also point `VOICE_CLIENT_OWW_MODEL` at the path to a custom `.tflite` model file.
+
+If `openwakeword` is not installed, startup will log a clear error and drop to manual mode.
+
+### Option B — Porcupine (requires a Picovoice account)
+
+```dotenv
+VOICE_CLIENT_WAKE_PROVIDER=porcupine
+PORCUPINE_ACCESS_KEY=replace-with-picovoice-access-key
+VOICE_CLIENT_PORCUPINE_KEYWORD_PATH=/absolute/path/to/Hey-OpenClaw.ppn
+```
 
 `Absolute path` means the full file location from the drive root, not a relative path from the current folder.
 
@@ -137,6 +162,12 @@ OpenClaw desktop voice client started.
 Press Enter for manual fallback recording, or type q then Enter to quit.
 Wake word listener active (Porcupine).
 Global hotkey listener active (CTRL+SHIFT+SPACE).
+```
+
+With OpenWakeWord, the third line reads:
+
+```text
+Wake word listener active (OpenWakeWord: hey_jarvis).
 ```
 
 What success looks like:
@@ -201,13 +232,19 @@ You can also use `quit` or `exit`.
 
 ### Wake word setup unavailable
 
-Plain-English meaning: the client could not start Porcupine.
+Plain-English meaning: the client could not start the wake word detector.
 
-Check:
+**If using Porcupine** (`VOICE_CLIENT_WAKE_PROVIDER=porcupine` or unset):
 
 - `PORCUPINE_ACCESS_KEY` is present
 - `VOICE_CLIENT_PORCUPINE_KEYWORD_PATH` points to a real `.ppn` file
 - the file path is absolute, not relative
+
+**If using OpenWakeWord** (`VOICE_CLIENT_WAKE_PROVIDER=openwakeword`):
+
+- Run `pip install openwakeword pyaudio numpy` to install the required packages
+- Check that `VOICE_CLIENT_OWW_PYTHON_BIN` points to the Python executable where those packages are installed
+- The model name in `VOICE_CLIENT_OWW_MODEL` must match an installed pre-trained model (`hey_jarvis`, `alexa`, `hey_mycroft`, `hey_rhasspy`) or a valid path to a `.tflite` file
 
 ### Global hotkey setup unavailable
 
