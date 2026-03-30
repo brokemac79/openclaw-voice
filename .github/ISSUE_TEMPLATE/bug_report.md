@@ -10,8 +10,6 @@ assignees: ''
 
 This project is maintained by a small team in our spare time. We welcome bug reports but **response times are not guaranteed** — this is not a commercial product with SLA commitments.
 
-If you need faster help, try the [OpenClaw Discord community](https://discord.com/invite/clawd) where other users may have already solved your problem.
-
 ---
 
 ## What happened?
