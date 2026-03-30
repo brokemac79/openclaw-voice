@@ -125,7 +125,15 @@ function getRecorderCommandTemplate() {
 }
 
 function getPlayerCommandTemplate() {
-  const configured = process.env.VOICE_CLIENT_PLAY_COMMAND || "";
+  const raw = process.env.VOICE_CLIENT_PLAY_COMMAND;
+
+  // Explicitly set to empty string means "no local playback" (Sonos-only mode).
+  // Only fall back to the platform default when the variable is absent entirely.
+  if (raw === "") {
+    return "";
+  }
+
+  const configured = raw || "";
 
   if (!configured) {
     return process.platform === "win32" ? windowsPlayCommandDefault : "";
@@ -148,7 +156,7 @@ function getPlayerCommandTemplate() {
 
 async function runTemplateCommand(template, outputPath) {
   const command = template.replace("{output}", outputPath || "");
-  await execAsync(command, { maxBuffer: 2 * 1024 * 1024 });
+  await execAsync(command, { maxBuffer: 2 * 1024 * 1024, timeout: 30000 });
 }
 
 async function recordClip() {
