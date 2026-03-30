@@ -48,6 +48,29 @@ function parsePossibleJson(output) {
   }
 }
 
+function parseCliJsonOutput(stdout, stderr) {
+  const stdoutText = String(stdout || "").trim();
+  const stderrText = String(stderr || "").trim();
+
+  if (!stdoutText && !stderrText) {
+    throw new Error("OpenClaw CLI returned empty output");
+  }
+
+  if (stdoutText) {
+    try {
+      return parsePossibleJson(stdoutText);
+    } catch {
+      // Continue to stderr fallback parsing.
+    }
+  }
+
+  if (stderrText) {
+    return parsePossibleJson(stderrText);
+  }
+
+  throw new Error("OpenClaw CLI returned non-JSON output");
+}
+
 function parseGatewayRestartRisk(text) {
   const normalized = String(text || "");
   const hasGatewayRestart = /systemctl\s+(?:--user\s+)?restart\s+openclaw-gateway\b/i.test(normalized);
@@ -230,7 +253,7 @@ export function createOpenClawClient(config, deps = {}) {
       process.stderr.write(`openclaw CLI stderr: ${stderr}\n`);
     }
 
-    const json = parsePossibleJson(stdout);
+    const json = parseCliJsonOutput(stdout, stderr);
     return extractOpenClawText(json, openClawOutputField);
   }
 

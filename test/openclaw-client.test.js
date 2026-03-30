@@ -101,6 +101,53 @@ test("queryOpenClaw falls back to local CLI on /v1 403 scope failure", async () 
   assert.equal(result, "fallback ok");
 });
 
+test("queryOpenClaw parses fallback JSON from stderr when stdout is empty", async () => {
+  const config = readOpenClawClientConfigFromEnv({
+    OPENCLAW_URL: "http://127.0.0.1:18789/v1/chat/completions",
+    OPENCLAW_CLI_FALLBACK_ENABLED: "true",
+    OPENCLAW_CLI_SESSION_ID: "voice-tests"
+  });
+
+  const client = createOpenClawClient(config, {
+    fetchImpl: async () => ({
+      ok: false,
+      status: 403,
+      text: async () => "missing scope: operator.write",
+      headers: { get: () => "application/json" }
+    }),
+    execFileAsync: async () => ({
+      stdout: "",
+      stderr: JSON.stringify({ payloads: [{ text: "stderr fallback ok" }] })
+    })
+  });
+
+  const result = await client("ping", "office");
+  assert.equal(result, "stderr fallback ok");
+});
+
+test("queryOpenClaw throws clear error when fallback CLI returns empty stdout and stderr", async () => {
+  const config = readOpenClawClientConfigFromEnv({
+    OPENCLAW_URL: "http://127.0.0.1:18789/v1/chat/completions",
+    OPENCLAW_CLI_FALLBACK_ENABLED: "true",
+    OPENCLAW_CLI_SESSION_ID: "voice-tests"
+  });
+
+  const client = createOpenClawClient(config, {
+    fetchImpl: async () => ({
+      ok: false,
+      status: 403,
+      text: async () => "missing scope: operator.write",
+      headers: { get: () => "application/json" }
+    }),
+    execFileAsync: async () => ({
+      stdout: "",
+      stderr: ""
+    })
+  });
+
+  await assert.rejects(() => client("ping", "office"), /OpenClaw CLI returned empty output/);
+});
+
 test("queryOpenClaw isolates gateway restart turns to one-shot session ids", async () => {
   const config = readOpenClawClientConfigFromEnv({
     OPENCLAW_URL: "http://127.0.0.1:18789/v1/chat/completions",
