@@ -2,14 +2,16 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
-import { exec } from "node:child_process";
+import { exec, spawn } from "node:child_process";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 
 import dotenv from "dotenv";
 
 dotenv.config();
 
 const execAsync = promisify(exec);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const unixRecordCommandDefault = "sox -q -d -c 1 -r 16000 \"{output}\" trim 0 5";
 const windowsRecordCommandDefault = "sox.exe -q -t waveaudio default -c 1 -r 16000 \"{output}\" trim 0 5";
 const windowsPlayCommandDefault =
@@ -38,6 +40,11 @@ const porcupineKeywordPath = process.env.VOICE_CLIENT_PORCUPINE_KEYWORD_PATH || 
 const porcupineModelPath = process.env.VOICE_CLIENT_PORCUPINE_MODEL_PATH || "";
 const porcupineSensitivity = parseFloatWithDefault(process.env.VOICE_CLIENT_PORCUPINE_SENSITIVITY, 0.5);
 const porcupineDeviceIndex = parseIntWithDefault(process.env.VOICE_CLIENT_PORCUPINE_DEVICE_INDEX, -1);
+
+const wakeProvider = (process.env.VOICE_CLIENT_WAKE_PROVIDER || "porcupine").trim().toLowerCase();
+const owwPythonBin = process.env.VOICE_CLIENT_OWW_PYTHON_BIN || "python3";
+const owwModel = process.env.VOICE_CLIENT_OWW_MODEL || "hey_jarvis";
+const owwThreshold = parseFloatWithDefault(process.env.VOICE_CLIENT_OWW_THRESHOLD, 0.5);
 
 const hotkeyKey = (process.env.VOICE_CLIENT_HOTKEY_KEY || "SPACE").trim().toUpperCase();
 const hotkeyModifiers = (process.env.VOICE_CLIENT_HOTKEY_MODIFIERS || "CTRL+SHIFT")
@@ -223,14 +230,10 @@ function areRequiredModifiersDown(down) {
   });
 }
 
-async function startWakeWordDetector(onWake) {
-  if (!wakeWordEnabled) {
-    return null;
-  }
-
+async function startPorcupineDetector(onWake) {
   if (!porcupineAccessKey || !porcupineKeywordPath) {
     throw new Error(
-      "Wake word mode requires PORCUPINE_ACCESS_KEY and VOICE_CLIENT_PORCUPINE_KEYWORD_PATH"
+      "Porcupine wake word mode requires PORCUPINE_ACCESS_KEY and VOICE_CLIENT_PORCUPINE_KEYWORD_PATH"
     );
   }
 
@@ -286,6 +289,102 @@ async function startWakeWordDetector(onWake) {
     recorder.release();
     porcupine.release();
   };
+}
+
+async function startOpenWakeWordDetector(onWake) {
+  const scriptPath = path.join(__dirname, "..", "scripts", "openwakeword_detect.py");
+
+  const args = [
+    scriptPath,
+    "--model", owwModel,
+    "--threshold", String(owwThreshold)
+  ];
+
+  const child = spawn(owwPythonBin, args, {
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+
+  let lastWakeAt = 0;
+  let buffer = "";
+
+  child.stdout.on("data", (chunk) => {
+    buffer += String(chunk);
+    const lines = buffer.split("\n");
+    buffer = lines.pop();
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        continue;
+      }
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed.detected) {
+          const now = Date.now();
+          if (now - lastWakeAt >= wakeCooldownMs) {
+            lastWakeAt = now;
+            onWake("wake-word");
+          }
+        }
+      } catch {
+        // ignore non-JSON stdout lines
+      }
+    }
+  });
+
+  child.stderr.on("data", (chunk) => {
+    const text = String(chunk).trim();
+    if (!text) {
+      return;
+    }
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed.error) {
+        process.stderr.write(`OpenWakeWord error: ${parsed.details || parsed.error}\n`);
+        return;
+      }
+    } catch {
+      // not JSON — pass through as-is
+    }
+    process.stderr.write(`openwakeword: ${text}\n`);
+  });
+
+  await new Promise((resolve, reject) => {
+    // Give the process a moment to fail fast (e.g. missing package)
+    const timer = setTimeout(resolve, 1500);
+
+    child.on("error", (err) => {
+      clearTimeout(timer);
+      reject(new Error(`Failed to spawn OpenWakeWord sidecar: ${err.message}`));
+    });
+
+    child.on("exit", (code) => {
+      clearTimeout(timer);
+      if (code !== null && code !== 0) {
+        reject(new Error(`OpenWakeWord sidecar exited with code ${code} — check that openwakeword, pyaudio, and numpy are installed`));
+      }
+    });
+  });
+
+  return async () => {
+    try {
+      child.kill("SIGTERM");
+    } catch {
+      // ignored
+    }
+  };
+}
+
+async function startWakeWordDetector(onWake) {
+  if (!wakeWordEnabled) {
+    return null;
+  }
+
+  if (wakeProvider === "openwakeword") {
+    return startOpenWakeWordDetector(onWake);
+  }
+
+  return startPorcupineDetector(onWake);
 }
 
 async function startGlobalHotkeyListener(onWake) {
@@ -384,7 +483,7 @@ if (wakeMode !== "manual" && wakeMode !== "ambient") {
     const stopWakeWord = await startWakeWordDetector(runVoiceTurn);
     if (stopWakeWord) {
       cleanupFns.push(stopWakeWord);
-      process.stdout.write("Wake word listener active (Porcupine).\n");
+      process.stdout.write(`Wake word listener active (${wakeProvider === "openwakeword" ? `OpenWakeWord: ${owwModel}` : "Porcupine"}).\n`);
     }
   } catch (error) {
     process.stderr.write(

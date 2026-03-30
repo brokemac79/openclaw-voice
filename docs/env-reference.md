@@ -13,6 +13,7 @@ Use this section when you are unsure which URL/token goes in which field.
 | Voice access token for this app | Value you create in `.env` as `VOICE_API_BEARER_TOKEN` | Browser **Access Token** field and desktop `VOICE_CLIENT_BEARER_TOKEN` (or let desktop reuse `VOICE_API_BEARER_TOKEN`) |
 | Upstream OpenClaw API URL | Upstream HTTP endpoint (for example `http://192.168.1.10:3000/api/chat`) | `.env` -> `OPENCLAW_URL` |
 | Upstream OpenClaw API auth token (optional) | Token from your OpenClaw/gateway host | `.env` -> `OPENCLAW_AUTH_BEARER` |
+| OpenClaw gateway token for CLI fallback | Token from your OpenClaw gateway auth settings | `.env` -> `OPENCLAW_GATEWAY_TOKEN` |
 
 If upstream only gives you a websocket URL (example: `ws://192.168.1.10:18789`):
 
@@ -46,7 +47,7 @@ Columns:
 | `OPENCLAW_OUTPUT_FIELD` | JSON field name read from the upstream reply | `response` | All self-hosted setups | Your upstream API contract |
 | `OPENCLAW_AUTH_BEARER` | Optional bearer token for the upstream OpenClaw API | `upstream-token-abc123` | Only if your upstream requires auth | Your OpenClaw or gateway auth settings |
 | `OPENCLAW_CLI_FALLBACK_ENABLED` | Enables local CLI fallback only for `/v1/*` 403 scope regressions | `true` | OpenClaw `2026.3.28` `/v1` token-scope regression workaround | Set manually when you hit `missing scope: operator.read/operator.write` on `/v1` |
-| `OPENCLAW_GATEWAY_TOKEN` | Gateway token exported to the local `openclaw` CLI process during fallback turns | `replace-with-openclaw-gateway-token` | CLI fallback on hosts where `openclaw` requires gateway token auth | Your OpenClaw gateway auth settings |
+| `OPENCLAW_GATEWAY_TOKEN` | Gateway token exported to the local `openclaw` CLI process during fallback turns | `replace-with-openclaw-gateway-token` | Required for systemd CLI fallback when `OPENCLAW_CLI_FALLBACK_ENABLED=true` and `openclaw` expects gateway token auth | Your OpenClaw gateway auth settings |
 | `OPENCLAW_CLI_BIN` | OpenClaw CLI executable used for fallback turns | `openclaw` | CLI fallback mode | Your local PATH or absolute binary path |
 | `OPENCLAW_CLI_SESSION_ID` | Default CLI session id when browser request omits `sessionId` | `openclaw-voice` | CLI fallback mode | Choose any stable session label |
 | `OPENCLAW_CLI_AGENT` | Optional explicit OpenClaw agent id for fallback turns | `ops` | Multi-agent OpenClaw setups using fallback | Your OpenClaw agent config |
@@ -105,6 +106,14 @@ Skip this section unless you want Sonos playback.
 | `SONOS_RELAY_AUTH_BEARER` | Optional auth token for the relay | `replace-with-relay-token-if-needed` | Protected Sonos relay | Your relay auth config |
 | `SONOS_RELAY_TIMEOUT_MS` | Timeout per relay attempt | `12000` | Sonos playback | Choose how long to wait before failover |
 | `SONOS_ROOM_DEFAULT` | Default Sonos room when the request does not specify one | `Kitchen` | Sonos playback | Exact room name from your Sonos setup |
+| `SONOS_VPS_RELAY_PORT` | Port used by the in-repo Sonos relay service (`npm run sonos:relay`) | `8788` | In-repo relay deployment | Pick an open port on the relay host |
+| `SONOS_VPS_RELAY_PATH` | HTTP path that accepts voice-server relay payloads | `/play` | In-repo relay deployment | Keep default unless you need a custom route |
+| `SONOS_VPS_RELAY_AUTH_BEARER` | Bearer token required by the in-repo relay endpoint | `replace-with-relay-token` | Protected in-repo relay | Choose a random token and mirror it into `SONOS_RELAY_AUTH_BEARER` |
+| `SONOS_HTTP_API_URL` | Base URL for `node-sonos-http-api` used by the in-repo relay | `http://127.0.0.1:5005` | In-repo relay deployment | URL where your Sonos HTTP API runs |
+| `SONOS_HTTP_API_AUTH_BEARER` | Optional bearer token for Sonos HTTP API requests from the in-repo relay | `replace-with-sonos-http-api-token` | Protected Sonos HTTP API | Sonos HTTP API auth config |
+| `SONOS_RELAY_PUBLIC_BASE_URL` | Public/reachable base URL that Sonos uses to fetch temp audio clips from the relay | `http://192.168.1.50:8788` | In-repo relay deployment | Use an address reachable from Sonos speakers |
+| `SONOS_RELAY_MEDIA_TTL_MS` | How long temp relay audio files stay available before cleanup | `900000` | In-repo relay deployment | Usually keep 10 to 20 minutes |
+| `SONOS_RELAY_MAX_AUDIO_BYTES` | Max accepted payload size for relay audio uploads | `15728640` | In-repo relay deployment | Tune based on expected clip size |
 
 ## Desktop client
 
@@ -133,17 +142,35 @@ Skip this section unless you want Sonos playback.
 | `VOICE_CLIENT_WAKE_BEEP_ENABLED` | Plays a confirmation beep on wake trigger | `true` | Wake-word or hotkey desktop mode | Set `false` if you want silent wake confirmation |
 | `VOICE_CLIENT_WAKE_BEEP_COMMAND` | Optional extra command to play a custom sound | `(leave blank)` | Optional custom wake sound | Your local audio player command |
 
-## Porcupine wake word (advanced / optional)
-
-Skip this section unless you want a spoken wake phrase.
+## Wake word provider selection (advanced / optional)
 
 | Variable | What it is | Example value | Needed for | Where to get it |
 | --- | --- | --- | --- | --- |
-| `PORCUPINE_ACCESS_KEY` | Credential for Picovoice Porcupine | `replace-with-picovoice-access-key` | Wake-word desktop mode | Picovoice console |
-| `VOICE_CLIENT_PORCUPINE_KEYWORD_PATH` | Absolute path to the `.ppn` wake keyword file | `/Users/alex/Downloads/Hey-OpenClaw.ppn` | Wake-word desktop mode | Picovoice keyword download |
-| `VOICE_CLIENT_PORCUPINE_MODEL_PATH` | Optional absolute path to a custom Porcupine model file | `/Users/alex/Downloads/porcupine_params.pv` | Some wake-word setups only | Picovoice model file if you use one |
-| `VOICE_CLIENT_PORCUPINE_SENSITIVITY` | Wake-word detector sensitivity | `0.5` | Wake-word desktop mode | Tune based on false positives vs misses |
+| `VOICE_CLIENT_WAKE_PROVIDER` | Which wake word engine to use | `porcupine` | Wake-word desktop mode | Choose `porcupine` (default) or `openwakeword` |
+
+## Porcupine wake word (advanced / optional)
+
+Skip this section unless you want a spoken wake phrase using Porcupine (requires a Picovoice account).
+
+| Variable | What it is | Example value | Needed for | Where to get it |
+| --- | --- | --- | --- | --- |
+| `PORCUPINE_ACCESS_KEY` | Credential for Picovoice Porcupine | `replace-with-picovoice-access-key` | Porcupine wake-word mode | Picovoice console |
+| `VOICE_CLIENT_PORCUPINE_KEYWORD_PATH` | Absolute path to the `.ppn` wake keyword file | `/Users/alex/Downloads/Hey-OpenClaw.ppn` | Porcupine wake-word mode | Picovoice keyword download |
+| `VOICE_CLIENT_PORCUPINE_MODEL_PATH` | Optional absolute path to a custom Porcupine model file | `/Users/alex/Downloads/porcupine_params.pv` | Some Porcupine setups only | Picovoice model file if you use one |
+| `VOICE_CLIENT_PORCUPINE_SENSITIVITY` | Wake-word detector sensitivity | `0.5` | Porcupine wake-word mode | Tune based on false positives vs misses |
 | `VOICE_CLIENT_PORCUPINE_DEVICE_INDEX` | Input device index for wake-word recording | `-1` | Special audio hardware setups | Use default unless you need a specific mic |
+
+## OpenWakeWord (advanced / optional)
+
+OpenWakeWord is a free, open-source alternative to Porcupine. No account or API key is required. Set `VOICE_CLIENT_WAKE_PROVIDER=openwakeword` to use it.
+
+Install first: `pip install openwakeword pyaudio numpy`
+
+| Variable | What it is | Example value | Needed for | Where to get it |
+| --- | --- | --- | --- | --- |
+| `VOICE_CLIENT_OWW_MODEL` | Wake word model name or path | `hey_jarvis` | OpenWakeWord mode | Pre-trained model names: `hey_jarvis`, `alexa`, `hey_mycroft`, `hey_rhasspy`; or a path to a custom `.tflite` model |
+| `VOICE_CLIENT_OWW_THRESHOLD` | Detection score threshold (0.0–1.0) | `0.5` | OpenWakeWord mode | Lower = more sensitive, higher = fewer false positives |
+| `VOICE_CLIENT_OWW_PYTHON_BIN` | Python executable used to run the OpenWakeWord sidecar | `python3` | OpenWakeWord mode | The Python executable in your venv or system PATH |
 
 ## Global hotkey (advanced / optional)
 
@@ -164,4 +191,4 @@ Token reminder:
 
 - `VOICE_API_BEARER_TOKEN` is for clients calling this voice server.
 - `OPENCLAW_AUTH_BEARER` is for this voice server calling upstream OpenClaw.
-- `OPENCLAW_GATEWAY_TOKEN` is for local `openclaw` CLI fallback turns when your gateway requires token auth.
+- `OPENCLAW_GATEWAY_TOKEN` is for local `openclaw` CLI fallback turns and must live in the same `.env` file loaded by `systemd` `EnvironmentFile=`.
