@@ -10,6 +10,8 @@ import express from "express";
 import multer from "multer";
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 
+import { createOpenClawClient, readOpenClawClientConfigFromEnv } from "./openclaw-client.js";
+
 dotenv.config();
 
 const requiredEnv = ["VOICE_API_BEARER_TOKEN", "OPENCLAW_URL"];
@@ -20,9 +22,6 @@ if (missingEnv.length > 0) {
 }
 
 const port = Number(process.env.PORT || 8787);
-const openClawMethod = (process.env.OPENCLAW_METHOD || "POST").toUpperCase();
-const openClawInputField = process.env.OPENCLAW_INPUT_FIELD || "input";
-const openClawOutputField = process.env.OPENCLAW_OUTPUT_FIELD || "response";
 const edgeVoice = process.env.EDGE_TTS_VOICE || "en-US-AndrewNeural";
 const ttsProvider = (process.env.TTS_PROVIDER || "edge").trim().toLowerCase();
 const piperBin = process.env.PIPER_BIN || "piper";
@@ -45,6 +44,9 @@ const sonosRelayTimeoutMs = Number(process.env.SONOS_RELAY_TIMEOUT_MS || 12000);
 const sonosRoomDefault = process.env.SONOS_ROOM_DEFAULT || "";
 
 const execFileAsync = promisify(execFile);
+const queryOpenClaw = createOpenClawClient(readOpenClawClientConfigFromEnv(process.env), {
+  execFileAsync
+});
 
 const app = express();
 const upload = multer({ limits: { fileSize: 15 * 1024 * 1024 } });
@@ -354,46 +356,6 @@ async function sendProactiveAlert(payload) {
     ttsProvider: synthesis.provider,
     sonos
   };
-}
-
-async function queryOpenClaw(text, sessionId) {
-  const payload = {
-    [openClawInputField]: text,
-    sessionId: sessionId || undefined
-  };
-
-  const headers = {
-    "Content-Type": "application/json"
-  };
-
-  if (process.env.OPENCLAW_AUTH_BEARER) {
-    headers.Authorization = `Bearer ${process.env.OPENCLAW_AUTH_BEARER}`;
-  }
-
-  const response = await fetch(process.env.OPENCLAW_URL, {
-    method: openClawMethod,
-    headers,
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`OpenClaw request failed (${response.status}): ${body}`);
-  }
-
-  const contentType = response.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    const json = await response.json();
-    if (typeof json[openClawOutputField] === "string") {
-      return json[openClawOutputField];
-    }
-    if (typeof json.text === "string") {
-      return json.text;
-    }
-    return JSON.stringify(json);
-  }
-
-  return response.text();
 }
 
 app.get("/health", (_req, res) => {

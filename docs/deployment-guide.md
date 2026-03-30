@@ -90,6 +90,45 @@ If you need a **production VPS + domain + `systemd` + Caddy** setup, use `docs/v
 
 ---
 
+## Tailscale serve option (all platforms)
+
+Use this section when you choose Option B on Linux, macOS, or Windows.
+
+### Tailscale prerequisites
+
+Before running `tailscale serve`, confirm:
+
+- Tailscale is installed on the host machine.
+- `http://127.0.0.1:8787/health` returns `{"ok":true}` on the host.
+- The host machine is signed into your tailnet (`tailscale up` completed).
+- At least one second device (phone/tablet/laptop) is also signed into the same tailnet.
+
+### Security notes for Tailscale deployments
+
+- `tailscale serve` keeps traffic private to your tailnet, but anyone in that tailnet who can reach the host URL can still load the page.
+- Keep using `VOICE_API_BEARER_TOKEN`; tailnet access does not replace app-level auth.
+- If you no longer want the route published, remove it with `tailscale serve reset` on the host.
+
+### Example `tailscale serve` config and status
+
+Host command (Linux/macOS may need `sudo`; Windows usually does not):
+
+```bash
+tailscale serve https / http://127.0.0.1:8787
+tailscale serve status
+```
+
+Typical status output includes your tailnet HTTPS URL and a proxy rule similar to:
+
+```text
+https://your-hostname.your-tailnet.ts.net
+|-- / proxy http://127.0.0.1:8787
+```
+
+If your status output does not show a proxy rule for `127.0.0.1:8787`, re-run the serve command.
+
+---
+
 ## Choose your platform walkthrough
 
 - [Linux](#linux-walkthrough)

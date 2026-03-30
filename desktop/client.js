@@ -10,14 +10,18 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const execAsync = promisify(exec);
+const unixRecordCommandDefault = "sox -q -d -c 1 -r 16000 \"{output}\" trim 0 5";
+const windowsRecordCommandDefault = "sox.exe -q -t waveaudio default -c 1 -r 16000 \"{output}\" trim 0 5";
+const windowsPlayCommandDefault =
+  "powershell -NoProfile -NonInteractive -WindowStyle Hidden -Command \"$p=New-Object -ComObject WMPlayer.OCX; $m=$p.newMedia('{output}'); $p.currentPlaylist.appendItem($m); $p.controls.play(); while($p.playState -ne 1){Start-Sleep -Milliseconds 200}\"";
 
 const serviceUrl = (process.env.VOICE_CLIENT_SERVICE_URL || "http://127.0.0.1:8787").replace(/\/$/, "");
 const apiPath = process.env.VOICE_CLIENT_API_PATH || "/api/voice/turn";
 const bearerToken = process.env.VOICE_CLIENT_BEARER_TOKEN || process.env.VOICE_API_BEARER_TOKEN || "";
 const sessionId = process.env.VOICE_CLIENT_SESSION_ID || "Desktop";
 const sonosRoom = process.env.VOICE_CLIENT_SONOS_ROOM || "";
-const recorderCommandTemplate = process.env.VOICE_CLIENT_RECORD_COMMAND || "sox -q -d -c 1 -r 16000 \"{output}\" trim 0 5";
-const playerCommandTemplate = process.env.VOICE_CLIENT_PLAY_COMMAND || "";
+const recorderCommandTemplate = getRecorderCommandTemplate();
+const playerCommandTemplate = getPlayerCommandTemplate();
 const outputDir = process.env.VOICE_CLIENT_OUTPUT_DIR || path.join(os.tmpdir(), "openclaw-voice-client");
 const wakeMode = (process.env.VOICE_CLIENT_WAKE_MODE || "auto").toLowerCase();
 const ambientModeEnabled = wakeMode === "ambient" || parseBool(process.env.VOICE_CLIENT_AMBIENT_MODE, false);
@@ -84,6 +88,54 @@ function toApiUrl() {
 
 function stamp() {
   return new Date().toISOString().replace(/[.:]/g, "-");
+}
+
+function getRecorderCommandTemplate() {
+  const configured = process.env.VOICE_CLIENT_RECORD_COMMAND || "";
+  const defaultTemplate = process.platform === "win32" ? windowsRecordCommandDefault : unixRecordCommandDefault;
+
+  if (!configured) {
+    return defaultTemplate;
+  }
+
+  if (process.platform !== "win32") {
+    return configured;
+  }
+
+  const normalized = configured.trim();
+  if (!/\bsox(?:\.exe)?\b/i.test(normalized) || !/(?:^|\s)-d(?:\s|$)/.test(normalized)) {
+    return configured;
+  }
+  if (/\bwaveaudio\b/i.test(normalized)) {
+    return configured;
+  }
+
+  process.stdout.write(
+    "Detected Windows sox command using -d input; switching to -t waveaudio default for compatibility.\n"
+  );
+  return normalized.replace(/(?:^|\s)-d(?:\s|$)/, " -t waveaudio default ").replace(/\s+/g, " ").trim();
+}
+
+function getPlayerCommandTemplate() {
+  const configured = process.env.VOICE_CLIENT_PLAY_COMMAND || "";
+
+  if (!configured) {
+    return process.platform === "win32" ? windowsPlayCommandDefault : "";
+  }
+
+  if (process.platform !== "win32") {
+    return configured;
+  }
+
+  const normalized = configured.trim();
+  if (!/\bstart-process\b/i.test(normalized)) {
+    return configured;
+  }
+
+  process.stdout.write(
+    "Detected Windows playback command using Start-Process; switching to a hidden Windows Media Player COM command for silent playback.\n"
+  );
+  return windowsPlayCommandDefault;
 }
 
 async function runTemplateCommand(template, outputPath) {
@@ -259,7 +311,14 @@ async function startGlobalHotkeyListener(onWake) {
     return true;
   };
 
-  listener.addListener(handler);
+  try {
+    await listener.addListener(handler);
+  } catch (error) {
+    if (typeof listener.kill === "function") {
+      listener.kill();
+    }
+    throw error;
+  }
 
   return async () => {
     listener.removeListener(handler);

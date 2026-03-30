@@ -39,6 +39,14 @@ The desktop client records audio with `sox` by default.
 - Ubuntu/Debian: `sudo apt-get update && sudo apt-get install -y sox libsox-fmt-all`
 - Windows with Chocolatey: `choco install sox.portable -y`
 
+Windows recording command:
+
+```dotenv
+VOICE_CLIENT_RECORD_COMMAND=sox.exe -q -t waveaudio default -c 1 -r 16000 "{output}" trim 0 5
+```
+
+If your `.env` still has the older `sox -q -d ...` value, the desktop client now auto-corrects it on Windows.
+
 Success check:
 
 ```bash
@@ -67,8 +75,10 @@ VOICE_CLIENT_PLAY_COMMAND=afplay "{output}"
 # Linux
 VOICE_CLIENT_PLAY_COMMAND=mpg123 "{output}"
 # Windows
-VOICE_CLIENT_PLAY_COMMAND=powershell -NoProfile -Command "Start-Process '{output}'"
+VOICE_CLIENT_PLAY_COMMAND=powershell -NoProfile -NonInteractive -WindowStyle Hidden -Command "$p=New-Object -ComObject WMPlayer.OCX; $m=$p.newMedia('{output}'); $p.currentPlaylist.appendItem($m); $p.controls.play(); while($p.playState -ne 1){Start-Sleep -Milliseconds 200}"
 ```
+
+On Windows, you can also leave `VOICE_CLIENT_PLAY_COMMAND` unset. The desktop client defaults to a hidden playback command and auto-rewrites legacy `Start-Process` values.
 
 If you want wake word support, also set:
 
@@ -178,6 +188,7 @@ Try:
 - switching to `VOICE_CLIENT_WAKE_MODE=manual`
 - using wake-word mode instead
 - checking desktop permission prompts on macOS, Linux Wayland, or Windows
+- on Windows, if you see `spawn UNKNOWN` from `node-global-key-listener`, set `VOICE_CLIENT_HOTKEY_ENABLED=false` to keep the client in manual/wake-word mode and then verify Microsoft Visual C++ Redistributable + security policy for `WinKeyServer.exe`
 
 ### Missing voice token
 

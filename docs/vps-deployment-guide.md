@@ -20,6 +20,8 @@ This guide is for operators who are comfortable with Linux administration.
 - Domain name you control (example: `voice.example.com`)
 - DNS A/AAAA record pointing your domain to the VPS
 - Real upstream OpenClaw HTTP API URL and token (if required)
+- Optional for Sonos playback: a reachable HTTP Sonos relay endpoint on your LAN/VPN
+- Optional for Sonos playback: target Sonos room name(s) from your Sonos app
 
 ## 1) Prepare the server
 
@@ -49,11 +51,62 @@ sudo -u openclaw npm install
 sudo -u openclaw cp .env.example .env
 ```
 
+Install Python speech dependencies for the service user:
+
+```bash
+sudo apt install -y python3 python3-venv python3-pip ffmpeg
+sudo -u openclaw python3 -m venv /opt/openclaw-voice/.venv
+sudo -u openclaw /opt/openclaw-voice/.venv/bin/python3 -m pip install --upgrade pip
+sudo -u openclaw /opt/openclaw-voice/.venv/bin/python3 -m pip install faster-whisper
+```
+
 Edit `/opt/openclaw-voice/.env` and set at least:
 
 - `VOICE_API_BEARER_TOKEN`
 - `OPENCLAW_URL`
 - `OPENCLAW_AUTH_BEARER` (if your upstream requires auth)
+- `FASTER_WHISPER_PYTHON_BIN=/opt/openclaw-voice/.venv/bin/python3`
+
+If you also want Sonos playback from this VPS deployment, add:
+
+- `SONOS_RELAY_URL=http://<relay-host>:<port>/<path>`
+- `SONOS_RELAY_AUTH_BEARER=<token>` (only if your relay requires auth)
+- `SONOS_RELAY_FALLBACK_URL=http://<backup-relay>:<port>/<path>` (optional)
+- `SONOS_RELAY_TIMEOUT_MS=12000` (recommended starting point)
+- `SONOS_ROOM_DEFAULT=<Exact Sonos room name>` (optional but useful)
+
+Why this matters: `systemd` does not activate your shell profile, so a plain `python3` may resolve to an interpreter that does not have `faster-whisper` installed.
+
+### Sonos relay topology for VPS deployments (optional)
+
+Use this only when you want spoken replies on Sonos.
+
+```
+Browser/desktop client
+  -> OpenClaw Voice on VPS (`https://voice.example.com`)
+     -> OpenClaw upstream API (`OPENCLAW_URL`)
+     -> Sonos relay on LAN/VPN (`SONOS_RELAY_URL`)
+        -> Sonos speaker room (`SONOS_ROOM_DEFAULT` or request `sonosRoom`)
+```
+
+Important network rule: the relay host must be reachable from the VPS. If your relay only listens on a private LAN address, connect the VPS to that network (VPN, tunnel, or private link) before enabling Sonos.
+
+Minimum relay contract:
+
+- Accept `POST` JSON payloads from OpenClaw Voice.
+- Parse `audioBase64` and play it to the requested room.
+- Return `2xx` on success and non-`2xx` on failure.
+
+Quick relay reachability check from the VPS:
+
+```bash
+curl -X POST http://<relay-host>:<port>/<path> \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <relay-token-if-needed>" \
+  -d '{"audioBase64":"dGVzdA==","room":"Kitchen"}'
+```
+
+Expected result: a non-timeout HTTP response from the relay (status code may vary by relay implementation).
 
 Then do a one-time local smoke test:
 
@@ -69,6 +122,16 @@ curl http://127.0.0.1:8787/health
 ```
 
 Expected: `{"ok":true}`. Stop the foreground app with `Ctrl+C`.
+
+Optional speech-path check before creating the service:
+
+```bash
+cd /opt/openclaw-voice
+sudo -u openclaw ffmpeg -f lavfi -i "anullsrc=r=16000:cl=mono" -t 2 test.wav
+sudo -u openclaw /opt/openclaw-voice/.venv/bin/python3 scripts/faster_whisper_transcribe.py --audio-path test.wav --model base.en
+```
+
+Expected: JSON output and no `ModuleNotFoundError` for `faster_whisper`.
 
 ## 3) Create systemd service
 
@@ -154,12 +217,22 @@ From the VPS:
 curl http://127.0.0.1:8787/health
 ```
 
+If Sonos is enabled, also verify relay health through the OpenClaw Voice API:
+
+```bash
+curl -H "Authorization: Bearer <VOICE_API_BEARER_TOKEN>" \
+  http://127.0.0.1:8787/api/sonos/relay/health
+```
+
+Expected: configured primary/fallback relay entries show reachable status.
+
 From another device/browser:
 
 1. Open `https://voice.example.com`
 2. Allow microphone access
 3. Paste `VOICE_API_BEARER_TOKEN`
 4. Run a short voice request
+5. If using Sonos, set a valid Sonos room and confirm audio plays in that room
 
 ## Troubleshooting
 
@@ -179,6 +252,15 @@ From another device/browser:
 
 - Confirm enabled state: `sudo systemctl is-enabled openclaw-voice`
 - Re-enable if needed: `sudo systemctl enable openclaw-voice`
+
+### Sonos relay check fails or Sonos playback is silent
+
+- Confirm relay env vars are present in `/opt/openclaw-voice/.env` (`SONOS_RELAY_URL`, optional auth/fallback values)
+- Confirm OpenClaw Voice can reach the relay host from the VPS network (VPN/private link/firewall)
+- Confirm `SONOS_ROOM_DEFAULT` or requested `sonosRoom` exactly matches a real Sonos room name
+- Check API health view: `curl -H "Authorization: Bearer <VOICE_API_BEARER_TOKEN>" http://127.0.0.1:8787/api/sonos/relay/health`
+- Check service logs for relay errors/timeouts: `sudo journalctl -u openclaw-voice -n 200 --no-pager`
+- If primary relay fails, configure `SONOS_RELAY_FALLBACK_URL` and retest
 
 ## Maintenance checklist
 

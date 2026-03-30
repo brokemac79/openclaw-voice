@@ -193,7 +193,24 @@ If you only want to talk to OpenClaw in a browser, stop here and use `docs/user-
 
      If this call returns JSON, your upstream URL/token pairing is likely correct.
 
-     Need a plain-English walkthrough for finding the real upstream URL and token requirements? Use `docs/host-it-yourself.md#how-do-i-find-my-real-openclaw-url`.
+     If `OPENCLAW_URL` is a `/v1/...` endpoint and you get `403 missing scope: operator.read` (or `operator.write`) on OpenClaw `2026.3.28`, enable the local CLI fallback:
+
+     ```env
+     OPENCLAW_CLI_FALLBACK_ENABLED=true
+     OPENCLAW_CLI_BIN=openclaw
+     OPENCLAW_CLI_SESSION_ID=openclaw-voice
+     # optional
+     OPENCLAW_CLI_AGENT=
+     ```
+
+     This keeps token auth for the voice API while routing upstream turns through `openclaw agent --local --json` until the upstream `/v1` scope regression is fixed.
+
+     Gateway-restart safety in CLI fallback mode:
+
+     - If a turn includes `systemctl --user restart openclaw-gateway`, the server runs that turn in an isolated one-shot session id so your primary session id is not terminated.
+     - Chained restart commands (for example `systemctl --user restart openclaw-gateway && curl ...`) are rejected with a clear warning because the restart terminates the active session before chained commands can continue.
+
+      Need a plain-English walkthrough for finding the real upstream URL and token requirements? Use `docs/host-it-yourself.md#how-do-i-find-my-real-openclaw-url`.
 
 5. Start server:
 
@@ -275,6 +292,22 @@ ffmpeg -version
 ```bash
 python3 -m pip install faster-whisper
 ```
+
+If you run OpenClaw Voice under `systemd`, do not point the service at a shell-only virtualenv activation.
+Use an absolute Python path that the service can execute at boot:
+
+```env
+FASTER_WHISPER_PYTHON_BIN=/opt/openclaw-voice/.venv/bin/python3
+```
+
+Install `faster-whisper` into that same interpreter (example on Linux VPS):
+
+```bash
+sudo -u openclaw /opt/openclaw-voice/.venv/bin/python3 -m pip install --upgrade pip
+sudo -u openclaw /opt/openclaw-voice/.venv/bin/python3 -m pip install faster-whisper
+```
+
+Why: `systemd` starts with a minimal environment and does not run your interactive shell profile, so relying on `source .venv/bin/activate` is fragile for always-on services.
 
 ### 5) Expect model download on first transcription
 
@@ -390,15 +423,21 @@ Important: the desktop client is a Node.js terminal CLI process. It is not a pac
 - Fedora/RHEL: `sudo dnf install -y sox`
 - Windows (Chocolatey): `choco install sox.portable -y`
 
+Windows note: use `-t waveaudio default` for the record command (the desktop client now auto-corrects legacy `sox -d ...` values on Windows).
+
+- Windows record command: `VOICE_CLIENT_RECORD_COMMAND=sox.exe -q -t waveaudio default -c 1 -r 16000 "{output}" trim 0 5`
+
 ### Local playback command examples (optional)
 
 Set `VOICE_CLIENT_PLAY_COMMAND` only if you want the desktop machine to play generated reply audio locally after each turn.
 
 - macOS: `VOICE_CLIENT_PLAY_COMMAND=afplay "{output}"`
 - Linux: `VOICE_CLIENT_PLAY_COMMAND=mpg123 "{output}"`
-- Windows: `VOICE_CLIENT_PLAY_COMMAND=powershell -NoProfile -Command "Start-Process '{output}'"`
+- Windows: `VOICE_CLIENT_PLAY_COMMAND=powershell -NoProfile -NonInteractive -WindowStyle Hidden -Command "$p=New-Object -ComObject WMPlayer.OCX; $m=$p.newMedia('{output}'); $p.currentPlaylist.appendItem($m); $p.controls.play(); while($p.playState -ne 1){Start-Sleep -Milliseconds 200}"`
 
 Tip: the reply file is written as `.mp3`, so pick a playback command that supports MP3 on your machine.
+
+Windows tip: the desktop client now defaults to a hidden Windows Media Player COM playback command when `VOICE_CLIENT_PLAY_COMMAND` is unset, and auto-rewrites legacy `Start-Process` values to that silent command.
 
 ### Porcupine prerequisites (wake word)
 

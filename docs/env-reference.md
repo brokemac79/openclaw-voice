@@ -45,6 +45,11 @@ Columns:
 | `OPENCLAW_INPUT_FIELD` | JSON field name used for the sent prompt text | `input` | All self-hosted setups | Your upstream API contract |
 | `OPENCLAW_OUTPUT_FIELD` | JSON field name read from the upstream reply | `response` | All self-hosted setups | Your upstream API contract |
 | `OPENCLAW_AUTH_BEARER` | Optional bearer token for the upstream OpenClaw API | `upstream-token-abc123` | Only if your upstream requires auth | Your OpenClaw or gateway auth settings |
+| `OPENCLAW_CLI_FALLBACK_ENABLED` | Enables local CLI fallback only for `/v1/*` 403 scope regressions | `true` | OpenClaw `2026.3.28` `/v1` token-scope regression workaround | Set manually when you hit `missing scope: operator.read/operator.write` on `/v1` |
+| `OPENCLAW_CLI_BIN` | OpenClaw CLI executable used for fallback turns | `openclaw` | CLI fallback mode | Your local PATH or absolute binary path |
+| `OPENCLAW_CLI_SESSION_ID` | Default CLI session id when browser request omits `sessionId` | `openclaw-voice` | CLI fallback mode | Choose any stable session label |
+| `OPENCLAW_CLI_AGENT` | Optional explicit OpenClaw agent id for fallback turns | `ops` | Multi-agent OpenClaw setups using fallback | Your OpenClaw agent config |
+| `OPENCLAW_CLI_TIMEOUT_MS` | Timeout for one fallback CLI turn | `120000` | CLI fallback mode | Set based on expected local model latency |
 
 ## Speech-to-text (`faster-whisper`)
 
@@ -110,8 +115,8 @@ Skip this section unless you want Sonos playback.
 | `VOICE_CLIENT_SESSION_ID` | Friendly label sent with desktop requests | `OfficeDesk` | Desktop client | Choose any label you will recognize |
 | `VOICE_CLIENT_SONOS_ROOM` | Default Sonos room for that desktop station | `Office` | Desktop + Sonos | Exact Sonos room name |
 | `VOICE_CLIENT_OUTPUT_DIR` | Folder for temporary recordings and reply audio | `/tmp/openclaw-voice-client` | Desktop client | Choose any writable folder |
-| `VOICE_CLIENT_RECORD_COMMAND` | Command used to record a short clip | `sox -q -d -c 1 -r 16000 "{output}" trim 0 5` | Desktop client | Usually keep the default if `sox` works |
-| `VOICE_CLIENT_PLAY_COMMAND` | Optional command for local playback of replies | `afplay "{output}"` | Desktop client with local playback | Choose a player installed on your OS |
+| `VOICE_CLIENT_RECORD_COMMAND` | Command used to record a short clip | `sox -q -d -c 1 -r 16000 "{output}" trim 0 5` (macOS/Linux) or `sox.exe -q -t waveaudio default -c 1 -r 16000 "{output}" trim 0 5` (Windows) | Desktop client | Keep default for your OS; Windows must use `-t waveaudio default` |
+| `VOICE_CLIENT_PLAY_COMMAND` | Optional command for local playback of replies | `afplay "{output}"` (macOS), `mpg123 "{output}"` (Linux), or `powershell -NoProfile -NonInteractive -WindowStyle Hidden -Command "$p=New-Object -ComObject WMPlayer.OCX; $m=$p.newMedia('{output}'); $p.currentPlaylist.appendItem($m); $p.controls.play(); while($p.playState -ne 1){Start-Sleep -Milliseconds 200}"` (Windows) | Desktop client with local playback | Choose a player installed on your OS (Windows defaults to hidden playback if unset) |
 
 ## Desktop wake and ambient options
 
@@ -122,7 +127,7 @@ Skip this section unless you want Sonos playback.
 | `VOICE_CLIENT_AMBIENT_INTERVAL_MS` | Delay between ambient captures | `20000` | Optional ambient desktop mode | Pick the interval you want |
 | `VOICE_CLIENT_AMBIENT_AUTO_START` | Starts ambient mode immediately on launch | `true` | Optional ambient desktop mode | Choose whether the loop should start itself |
 | `VOICE_CLIENT_WAKE_WORD_ENABLED` | Turns wake-word listening on or off | `true` | Wake-word desktop mode | Use `false` if you only want hotkey/manual |
-| `VOICE_CLIENT_HOTKEY_ENABLED` | Turns the fallback hotkey on or off | `true` | Hotkey desktop mode | Use `false` if you only want wake-word/manual |
+| `VOICE_CLIENT_HOTKEY_ENABLED` | Turns the fallback hotkey on or off | `true` | Hotkey desktop mode | Use `false` if you only want wake-word/manual, or as a Windows fallback if `node-global-key-listener` fails to spawn |
 | `VOICE_CLIENT_WAKE_COOLDOWN_MS` | Minimum gap between wake triggers | `2500` | Wake-word or hotkey desktop mode | Tune to reduce accidental repeats |
 | `VOICE_CLIENT_WAKE_BEEP_ENABLED` | Plays a confirmation beep on wake trigger | `true` | Wake-word or hotkey desktop mode | Set `false` if you want silent wake confirmation |
 | `VOICE_CLIENT_WAKE_BEEP_COMMAND` | Optional extra command to play a custom sound | `(leave blank)` | Optional custom wake sound | Your local audio player command |
