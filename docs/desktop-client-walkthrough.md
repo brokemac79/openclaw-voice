@@ -31,6 +31,36 @@ Optional advanced extras:
 - a local playback command if you want replies to play on the desktop machine
 - a Sonos room if replies should route to Sonos
 
+## Windows users: network profile and firewall
+
+If you are running the Sonos relay on a Windows machine, two settings must be in place before Sonos can connect. Skip this section on macOS or Linux.
+
+### Network profile must be Private
+
+When you first join a WiFi network, Windows often sets the profile to Public. Public networks block most inbound connections — your Sonos speaker will show "connection refused" even after a firewall rule is added.
+
+Check and change the profile:
+
+```powershell
+# Check current profile name and category
+Get-NetConnectionProfile
+
+# Change to Private (replace 'YourNetworkName' with the Name shown above)
+Set-NetConnectionProfile -Name 'YourNetworkName' -NetworkCategory Private
+```
+
+Or via the GUI: Settings → Network & Internet → WiFi → click your network name → set to **Private network**.
+
+**Why this happens:** When you first connect to a network, Windows asks whether to allow device discovery. Clicking No (or dismissing the prompt) locks the profile to Public — the safe default for unknown networks, but it blocks LAN services like the Sonos relay.
+
+### Firewall rule for port 8788
+
+```
+netsh advfirewall firewall add rule name="OpenClaw Sonos Relay" dir=in action=allow protocol=TCP localport=8788
+```
+
+Both the Private network profile **and** the firewall rule are required. Either alone is not enough. Set these before starting the relay.
+
 ## 1. Confirm the desktop prerequisites
 
 The desktop client records audio with `sox` by default.

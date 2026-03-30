@@ -18,6 +18,36 @@ UPnP/AVTransport API.
 - The VPS must be able to reach the Sonos speaker's IP directly (e.g. via Tailscale subnet routing)
 - The Sonos speaker must be able to reach the VPS on `SONOS_RELAY_PORT` to download the audio clip
 
+### Windows users: network profile and firewall
+
+On Windows, two settings block inbound connections by default. Both are required for Sonos to reach the relay.
+
+**1. Network profile must be Private**
+
+When you first connect to a WiFi network, Windows often sets it to Public. Public networks block most inbound connections, even when a firewall rule exists. Sonos will show "connection refused" until you change this.
+
+Check and change the profile:
+
+```powershell
+# Check current profile name and category
+Get-NetConnectionProfile
+
+# Change to Private (replace 'YourNetworkName' with the Name shown above)
+Set-NetConnectionProfile -Name 'YourNetworkName' -NetworkCategory Private
+```
+
+Or via the GUI: Settings → Network & Internet → WiFi → click your network name → set to **Private network**.
+
+**Why Windows defaults to Public:** When you first connect, Windows asks whether to allow device discovery. Clicking No (or dismissing the prompt) locks the profile to Public — the safe choice for unknown networks, but it breaks LAN services like this relay.
+
+**2. Windows Firewall inbound rule for port 8788**
+
+```
+netsh advfirewall firewall add rule name="OpenClaw Sonos Relay" dir=in action=allow protocol=TCP localport=8788
+```
+
+Both the Private network profile **and** the firewall rule are required. Either alone is not enough.
+
 ## Required environment variables
 
 | Variable | Description |
