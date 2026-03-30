@@ -49,7 +49,8 @@ Columns:
 | `OPENCLAW_CLI_FALLBACK_ENABLED` | Enables local CLI fallback only for `/v1/*` 403 scope regressions | `true` | OpenClaw `2026.3.28` `/v1` token-scope regression workaround | Set manually when you hit `missing scope: operator.read/operator.write` on `/v1` |
 | `OPENCLAW_GATEWAY_TOKEN` | Gateway token exported to the local `openclaw` CLI process during fallback turns | `replace-with-openclaw-gateway-token` | Required for systemd CLI fallback when `OPENCLAW_CLI_FALLBACK_ENABLED=true` and `openclaw` expects gateway token auth | Your OpenClaw gateway auth settings |
 | `OPENCLAW_CLI_BIN` | OpenClaw CLI executable used for fallback turns | `openclaw` | CLI fallback mode | Your local PATH or absolute binary path |
-| `OPENCLAW_CLI_SESSION_ID` | Default CLI session id when browser request omits `sessionId` | `openclaw-voice` | CLI fallback mode | Choose any stable session label |
+| `OPENCLAW_HTTP_SESSION_ID` | Default session id injected into HTTP-path voice turns so they appear in Mission Control; falls back to `OPENCLAW_CLI_SESSION_ID`, then `openclaw-voice` | `my-voice-session` | HTTP path (any mode) | Choose any stable session label visible in Mission Control |
+| `OPENCLAW_CLI_SESSION_ID` | Default CLI session id when browser request omits `sessionId`; also used as fallback for `OPENCLAW_HTTP_SESSION_ID` | `openclaw-voice` | CLI fallback mode | Choose any stable session label |
 | `OPENCLAW_CLI_AGENT` | Optional explicit OpenClaw agent id for fallback turns | `ops` | Multi-agent OpenClaw setups using fallback | Your OpenClaw agent config |
 | `OPENCLAW_CLI_TIMEOUT_MS` | Timeout for one fallback CLI turn | `120000` | CLI fallback mode | Set based on expected local model latency |
 
