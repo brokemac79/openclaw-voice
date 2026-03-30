@@ -7,6 +7,10 @@ This repository supports two different kinds of people:
 - people who just want to use an OpenClaw Voice setup someone else already runs
 - people who want to run the service on their own machine
 
+
+<!-- TODO: Add screenshot or terminal demo here -->
+<!-- A screenshot of the browser push-to-talk UI or a terminal recording of a voice turn would go here. -->
+
 ## Start here first
 
 If you are a non-technical user, start at `docs/user-guide.md`.
@@ -49,6 +53,34 @@ Do you want to use an existing OpenClaw Voice link?
           |
           +-- No, I only need the always-on desktop client -> Read docs/desktop-client-walkthrough.md
 ```
+
+## Quick Start — VPS + Tailscale HTTPS + browser push-to-talk
+
+The fastest path from a fresh Ubuntu/Debian VPS to HTTPS push-to-talk in your browser.
+Assumes [Tailscale](https://tailscale.com/download/linux) is already installed and connected on the VPS.
+
+```bash
+git clone https://github.com/brokemac79/openclaw-voice.git
+cd openclaw-voice
+npm install
+python3 -m venv .venv && source .venv/bin/activate
+pip install faster-whisper
+cp .env.example .env
+# Edit .env — set VOICE_API_BEARER_TOKEN and OPENCLAW_URL at minimum
+sudo apt install -y caddy
+# Edit /etc/caddy/Caddyfile — replace its contents with:
+#   your-machine.ts.net { reverse_proxy localhost:8787 }
+sudo systemctl reload caddy
+npm run dev
+```
+
+Once the server is running, open `https://your-machine.ts.net` in any Tailscale-connected browser,
+allow microphone access, and hold **Hold to talk** to speak.
+
+> Caddy fetches a Tailscale HTTPS certificate for your `*.ts.net` hostname automatically —
+> no manual cert management needed.
+
+For a persistent `systemd` service setup, see `docs/vps-deployment-guide.md`.
 
 ## What you can do with this
 
@@ -777,3 +809,7 @@ curl http://localhost:8787/api/sonos/relay/health \
 - Keep bearer tokens secret and rotated
 - Run Sonos relay on a LAN host with reliable uptime
 - Use process supervision (`systemd` or `pm2`) for both server and desktop client
+
+## Made by
+
+Built by [MCSQ Ltd](https://mcsq.co.uk).
