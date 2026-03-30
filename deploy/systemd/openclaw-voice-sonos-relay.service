@@ -1,0 +1,18 @@
+[Unit]
+Description=openclaw-voice Sonos Relay Service
+After=network.target
+
+[Service]
+Type=simple
+User=openclaw
+WorkingDirectory=/opt/openclaw-voice
+EnvironmentFile=/opt/openclaw-voice/.env
+ExecStart=/usr/bin/node src/sonos-relay-server.js
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sonos-relay
+
+[Install]
+WantedBy=multi-user.target
