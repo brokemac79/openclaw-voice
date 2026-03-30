@@ -11,6 +11,7 @@ import multer from "multer";
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 
 import { createOpenClawClient, readOpenClawClientConfigFromEnv } from "./openclaw-client.js";
+import { stripMarkdown } from "./strip-markdown.js";
 
 dotenv.config();
 
@@ -298,32 +299,33 @@ async function synthesizeSpeechWithEdge(text) {
 }
 
 async function synthesizeSpeech(text) {
+  const cleanText = stripMarkdown(text);
   const preferred = ttsProvider;
   const fallback = ttsFallbackProvider;
 
   if (preferred === "piper") {
-    return synthesizeSpeechWithPiper(text);
+    return synthesizeSpeechWithPiper(cleanText);
   }
 
   if (preferred === "edge") {
     if (fallback === "piper") {
       try {
-        return await synthesizeSpeechWithEdge(text);
+        return await synthesizeSpeechWithEdge(cleanText);
       } catch (error) {
         process.stderr.write(
           `Edge TTS failed, falling back to Piper: ${error instanceof Error ? error.message : String(error)}\n`
         );
-        return synthesizeSpeechWithPiper(text);
+        return synthesizeSpeechWithPiper(cleanText);
       }
     }
-    return synthesizeSpeechWithEdge(text);
+    return synthesizeSpeechWithEdge(cleanText);
   }
 
   if (preferred === "auto") {
     try {
-      return await synthesizeSpeechWithEdge(text);
+      return await synthesizeSpeechWithEdge(cleanText);
     } catch {
-      return synthesizeSpeechWithPiper(text);
+      return synthesizeSpeechWithPiper(cleanText);
     }
   }
 
