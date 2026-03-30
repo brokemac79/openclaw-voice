@@ -1,18 +1,22 @@
 # Sonos VPS Relay Service
 
-Use this guide when you want the Sonos relay to run from this repository instead of maintaining a separate custom relay service.
+The VPS-side Sonos relay (`src/sonos-relay-server.js`) is the companion service that
+receives audio from `openclaw-voice` and plays it on a Sonos speaker via the Sonos
+UPnP/AVTransport API.
 
-What this relay does:
+## How it works
 
-1. Accepts the existing OpenClaw Voice Sonos payload (`room`, `audioBase64`, `audioMimeType`, `text`).
-2. Writes temporary audio files and serves them over HTTP.
-3. Triggers playback through `node-sonos-http-api` using the Sonos `clip` route.
+1. The voice server synthesises a TTS audio clip and POSTs it (base64-encoded) to this relay.
+2. The relay writes the clip to a temporary file and serves it over a short-lived HTTP URL.
+3. The relay calls the Sonos UPnP `SetAVTransportURI` + `Play` actions, pointing the speaker
+   at that URL.
+4. After `SONOS_RELAY_CLIP_TTL_MS` milliseconds the file is deleted automatically.
 
 ## Prerequisites
 
-- A running `node-sonos-http-api` instance reachable by the relay host.
-- Sonos speakers that can reach the relay host URL.
-- OpenClaw Voice server configured to call this relay path.
+- Node.js ≥ 20 on the VPS
+- The VPS must be able to reach the Sonos speaker's IP directly (e.g. via Tailscale subnet routing)
+- The Sonos speaker must be able to reach the VPS on `SONOS_RELAY_PORT` to download the audio clip
 
 ### Windows users: network profile and firewall
 
@@ -44,72 +48,74 @@ netsh advfirewall firewall add rule name="OpenClaw Sonos Relay" dir=in action=al
 
 Both the Private network profile **and** the firewall rule are required. Either alone is not enough.
 
-## 1) Configure `.env`
+## Required environment variables
 
-In `/opt/openclaw-voice/.env`, set:
+| Variable | Description |
+|---|---|
+| `SONOS_RELAY_BEARER_TOKEN` | Secret token the voice server uses when calling this relay |
+| `SONOS_IP` | IP address of the Sonos speaker (e.g. `192.168.4.33`) |
+| `SONOS_RELAY_VPS_URL` | Base URL of this relay reachable by the Sonos speaker (e.g. `http://10.8.0.1:8788`) |
 
-```env
-SONOS_VPS_RELAY_PORT=8788
-SONOS_VPS_RELAY_PATH=/play
-SONOS_VPS_RELAY_AUTH_BEARER=replace-with-relay-token
-SONOS_HTTP_API_URL=http://127.0.0.1:5005
-SONOS_HTTP_API_AUTH_BEARER=
-SONOS_RELAY_PUBLIC_BASE_URL=http://192.168.1.50:8788
-SONOS_RELAY_MEDIA_TTL_MS=900000
-SONOS_RELAY_MAX_AUDIO_BYTES=15728640
+## Optional environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `SONOS_RELAY_PORT` | `8788` | Port this relay server listens on |
+| `SONOS_PORT` | `1400` | Sonos UPnP port |
+| `SONOS_RELAY_CLIP_TTL_MS` | `30000` | Milliseconds to keep the audio clip file before deleting it |
+
+## Starting the relay
+
+```bash
+node src/sonos-relay-server.js
 ```
 
-Then point OpenClaw Voice at this relay:
-
-```env
-SONOS_RELAY_URL=http://127.0.0.1:8788/play
-SONOS_RELAY_AUTH_BEARER=replace-with-relay-token
-```
-
-`SONOS_RELAY_PUBLIC_BASE_URL` must resolve from your Sonos network, not just from localhost. Use your LAN IP address (for example `192.168.x.x`) — not a Tailscale IP, VPN address, or `localhost`. Sonos speakers connect over your local WiFi network, not through VPN tunnels.
-
-## 2) Smoke test relay manually
-
-From the repo root:
+Or with the npm script:
 
 ```bash
 npm run sonos:relay
 ```
 
-In another terminal:
+## systemd setup
 
-```bash
-curl http://127.0.0.1:8788/health
-```
-
-Expected: `{"ok":true,...}` with your configured `sonosHttpApiUrl`.
-
-## 3) Run relay as a service
-
-Install the provided unit file:
+Copy the unit file and enable it:
 
 ```bash
 sudo cp deploy/systemd/openclaw-voice-sonos-relay.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now openclaw-voice-sonos-relay
-sudo systemctl status openclaw-voice-sonos-relay --no-pager
+sudo systemctl status openclaw-voice-sonos-relay
 ```
 
-Tail logs:
+The unit file assumes the app lives at `/opt/openclaw-voice` and runs as the `openclaw` user.
+Adjust `WorkingDirectory`, `User`, and `EnvironmentFile` if your setup differs.
+
+## Pointing the voice server at this relay
+
+In the voice server's `.env`, set:
+
+```env
+SONOS_RELAY_URL=http://<vps-ip-or-hostname>:8788/play-audio
+SONOS_RELAY_AUTH_BEARER=<same-value-as-SONOS_RELAY_BEARER_TOKEN>
+SONOS_ROOM_DEFAULT=<your Sonos room name, e.g. Kitchen>
+```
+
+The `SONOS_RELAY_URL` must point to the `/play-audio` endpoint of this relay, at the
+address/port that the voice server can reach it on (which may differ from
+`SONOS_RELAY_VPS_URL` if you use a reverse proxy or Tailscale).
+
+## Health check
 
 ```bash
-sudo journalctl -u openclaw-voice-sonos-relay -f
+curl http://localhost:8788/health
+# {"ok":true,"sonosIp":"192.168.4.33","sonosPort":1400,"vpsBaseUrl":"http://10.8.0.1:8788"}
 ```
 
-## 4) Verify end-to-end from OpenClaw Voice
+## Troubleshooting
 
-Call the existing health check on OpenClaw Voice:
-
-```bash
-curl -H "Authorization: Bearer <VOICE_API_BEARER_TOKEN>" \
-  http://127.0.0.1:8787/api/sonos/relay/health
-```
-
-Expected: relay URL at `http://127.0.0.1:8788/play` is reachable.
-
-Then run one voice turn or proactive alert and confirm playback in the target Sonos room.
+| Symptom | Check |
+|---|---|
+| `missing required env vars` on startup | Verify all three required vars are in `.env` |
+| `Sonos SOAP SetAVTransportURI failed (500)` | Confirm `SONOS_IP` and VPS → Sonos network path |
+| Sonos does not play | Verify the Sonos speaker can reach `SONOS_RELAY_VPS_URL` — check `SONOS_RELAY_VPS_URL` is set to the correct VPS address from the Sonos device's perspective |
+| `Clip not found or expired` errors in logs | Increase `SONOS_RELAY_CLIP_TTL_MS` if Sonos is slow to fetch the clip |

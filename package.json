@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "desktop:client": "node desktop/client.js",
+    "sonos:relay": "node src/sonos-relay-server.js",
     "test": "node --test"
   },
   "engines": {
