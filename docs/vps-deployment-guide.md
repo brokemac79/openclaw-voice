@@ -72,11 +72,13 @@ If you enable CLI fallback for `/v1` scope regressions, also set:
 
 - `OPENCLAW_CLI_FALLBACK_ENABLED=true`
 - `OPENCLAW_AUTH_BEARER=<upstream-token>` (required when upstream rejects unauthenticated CLI turns)
+- `OPENCLAW_GATEWAY_TOKEN=<gateway-token>` (required when your `openclaw` CLI expects gateway token auth)
 
 ### Service-user auth rule for CLI fallback
 
 CLI fallback executes inside the `systemd` service context (`User=openclaw`), not your interactive root shell.
 Keep OpenClaw auth variables in `/opt/openclaw-voice/.env` owned/readable by `openclaw` so fallback requests always have credentials after reboot.
+If your CLI fallback depends on gateway auth, put `OPENCLAW_GATEWAY_TOKEN` in the same file loaded by `EnvironmentFile=`.
 
 Quick verification:
 
@@ -84,7 +86,7 @@ Quick verification:
 sudo chown openclaw:openclaw /opt/openclaw-voice/.env
 sudo chmod 640 /opt/openclaw-voice/.env
 sudo -u openclaw test -r /opt/openclaw-voice/.env && echo "openclaw can read .env"
-sudo -u openclaw bash -lc 'grep -E "^(OPENCLAW_CLI_FALLBACK_ENABLED|OPENCLAW_AUTH_BEARER)=" /opt/openclaw-voice/.env'
+sudo -u openclaw bash -lc 'grep -E "^(OPENCLAW_CLI_FALLBACK_ENABLED|OPENCLAW_AUTH_BEARER|OPENCLAW_GATEWAY_TOKEN)=" /opt/openclaw-voice/.env'
 ```
 
 If you rotate tokens, edit `/opt/openclaw-voice/.env` and restart the service:

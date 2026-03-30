@@ -46,6 +46,7 @@ Columns:
 | `OPENCLAW_OUTPUT_FIELD` | JSON field name read from the upstream reply | `response` | All self-hosted setups | Your upstream API contract |
 | `OPENCLAW_AUTH_BEARER` | Optional bearer token for the upstream OpenClaw API | `upstream-token-abc123` | Only if your upstream requires auth | Your OpenClaw or gateway auth settings |
 | `OPENCLAW_CLI_FALLBACK_ENABLED` | Enables local CLI fallback only for `/v1/*` 403 scope regressions | `true` | OpenClaw `2026.3.28` `/v1` token-scope regression workaround | Set manually when you hit `missing scope: operator.read/operator.write` on `/v1` |
+| `OPENCLAW_GATEWAY_TOKEN` | Gateway token exported to the local `openclaw` CLI process during fallback turns | `replace-with-openclaw-gateway-token` | CLI fallback on hosts where `openclaw` requires gateway token auth | Your OpenClaw gateway auth settings |
 | `OPENCLAW_CLI_BIN` | OpenClaw CLI executable used for fallback turns | `openclaw` | CLI fallback mode | Your local PATH or absolute binary path |
 | `OPENCLAW_CLI_SESSION_ID` | Default CLI session id when browser request omits `sessionId` | `openclaw-voice` | CLI fallback mode | Choose any stable session label |
 | `OPENCLAW_CLI_AGENT` | Optional explicit OpenClaw agent id for fallback turns | `ops` | Multi-agent OpenClaw setups using fallback | Your OpenClaw agent config |
@@ -163,3 +164,4 @@ Token reminder:
 
 - `VOICE_API_BEARER_TOKEN` is for clients calling this voice server.
 - `OPENCLAW_AUTH_BEARER` is for this voice server calling upstream OpenClaw.
+- `OPENCLAW_GATEWAY_TOKEN` is for local `openclaw` CLI fallback turns when your gateway requires token auth.
