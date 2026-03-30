@@ -20,6 +20,7 @@ This guide is for operators who are comfortable with Linux administration.
 - Domain name you control (example: `voice.example.com`)
 - DNS A/AAAA record pointing your domain to the VPS
 - Real upstream OpenClaw HTTP API URL and token (if required)
+- If you plan to enable CLI fallback, upstream OpenClaw auth for the `openclaw` service user (do not rely on root-only shell exports)
 - Optional for Sonos playback: a reachable HTTP Sonos relay endpoint on your LAN/VPN
 - Optional for Sonos playback: target Sonos room name(s) from your Sonos app
 
@@ -66,6 +67,31 @@ Edit `/opt/openclaw-voice/.env` and set at least:
 - `OPENCLAW_URL`
 - `OPENCLAW_AUTH_BEARER` (if your upstream requires auth)
 - `FASTER_WHISPER_PYTHON_BIN=/opt/openclaw-voice/.venv/bin/python3`
+
+If you enable CLI fallback for `/v1` scope regressions, also set:
+
+- `OPENCLAW_CLI_FALLBACK_ENABLED=true`
+- `OPENCLAW_AUTH_BEARER=<upstream-token>` (required when upstream rejects unauthenticated CLI turns)
+
+### Service-user auth rule for CLI fallback
+
+CLI fallback executes inside the `systemd` service context (`User=openclaw`), not your interactive root shell.
+Keep OpenClaw auth variables in `/opt/openclaw-voice/.env` owned/readable by `openclaw` so fallback requests always have credentials after reboot.
+
+Quick verification:
+
+```bash
+sudo chown openclaw:openclaw /opt/openclaw-voice/.env
+sudo chmod 640 /opt/openclaw-voice/.env
+sudo -u openclaw test -r /opt/openclaw-voice/.env && echo "openclaw can read .env"
+sudo -u openclaw bash -lc 'grep -E "^(OPENCLAW_CLI_FALLBACK_ENABLED|OPENCLAW_AUTH_BEARER)=" /opt/openclaw-voice/.env'
+```
+
+If you rotate tokens, edit `/opt/openclaw-voice/.env` and restart the service:
+
+```bash
+sudo systemctl restart openclaw-voice
+```
 
 If you also want Sonos playback from this VPS deployment, add:
 
@@ -148,6 +174,7 @@ User=openclaw
 Group=openclaw
 WorkingDirectory=/opt/openclaw-voice
 Environment=NODE_ENV=production
+EnvironmentFile=/opt/openclaw-voice/.env
 ExecStart=/usr/bin/npm start
 Restart=always
 RestartSec=5
