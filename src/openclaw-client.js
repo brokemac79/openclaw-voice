@@ -167,6 +167,7 @@ export function createOpenClawClient(config, deps = {}) {
     openClawCliFallbackEnabled,
     openClawCliBin,
     openClawCliSessionId,
+    openClawHttpSessionId,
     openClawCliAgent,
     openClawCliTimeoutMs
   } = config;
@@ -174,10 +175,11 @@ export function createOpenClawClient(config, deps = {}) {
   const fetchImpl = deps.fetchImpl || fetch;
   const execFileAsync = deps.execFileAsync || promisify(execFile);
 
-  async function queryViaHttp(text, sessionId) {
+  async function queryViaHttp(text, sessionId, { omitDefaultSession = false } = {}) {
+    const resolvedSessionId = omitDefaultSession ? (sessionId || undefined) : (sessionId || openClawHttpSessionId || undefined);
     const payload = {
       [openClawInputField]: text,
-      sessionId: sessionId || undefined
+      sessionId: resolvedSessionId
     };
 
     const headers = {
@@ -258,16 +260,17 @@ export function createOpenClawClient(config, deps = {}) {
   }
 
   return async function queryOpenClaw(text, sessionId) {
+    const effectiveSessionId = sessionId || openClawHttpSessionId || undefined;
     const primaryResponse = await queryViaHttp(text, sessionId);
-    if (String(primaryResponse || "").trim() || !sessionId) {
+    if (String(primaryResponse || "").trim() || !effectiveSessionId) {
       return primaryResponse;
     }
 
     process.stderr.write(
-      `OpenClaw returned empty text for session '${sessionId}'; retrying once without sessionId to avoid stale-session empty payload bug.\n`
+      `OpenClaw returned empty text for session '${effectiveSessionId}'; retrying once without sessionId to avoid stale-session empty payload bug.\n`
     );
 
-    return queryViaHttp(text, undefined);
+    return queryViaHttp(text, undefined, { omitDefaultSession: true });
   };
 }
 
@@ -281,6 +284,7 @@ export function readOpenClawClientConfigFromEnv(env) {
     openClawCliFallbackEnabled: parseBoolean(env.OPENCLAW_CLI_FALLBACK_ENABLED, false),
     openClawCliBin: env.OPENCLAW_CLI_BIN || "openclaw",
     openClawCliSessionId: env.OPENCLAW_CLI_SESSION_ID || "openclaw-voice",
+    openClawHttpSessionId: env.OPENCLAW_HTTP_SESSION_ID || env.OPENCLAW_CLI_SESSION_ID || "openclaw-voice",
     openClawCliAgent: env.OPENCLAW_CLI_AGENT || "",
     openClawCliTimeoutMs: Number(env.OPENCLAW_CLI_TIMEOUT_MS || 120000)
   };

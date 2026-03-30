@@ -245,3 +245,102 @@ test("queryOpenClaw retries without session id when first response is empty", as
   assert.equal(seenBodies[0].sessionId, "office");
   assert.equal(seenBodies[1].sessionId, undefined);
 });
+
+test("OPENCLAW_HTTP_SESSION_ID is injected into HTTP turns when caller passes no sessionId", async () => {
+  const config = readOpenClawClientConfigFromEnv({
+    OPENCLAW_URL: "http://127.0.0.1:3000/api/chat",
+    OPENCLAW_HTTP_SESSION_ID: "my-voice-session"
+  });
+
+  const seenBodies = [];
+  const client = createOpenClawClient(config, {
+    fetchImpl: async (_url, options) => {
+      seenBodies.push(JSON.parse(options.body));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ response: "ok" }),
+        text: async () => "",
+        headers: { get: () => "application/json" }
+      };
+    }
+  });
+
+  await client("hello");
+  assert.equal(seenBodies[0].sessionId, "my-voice-session");
+});
+
+test("OPENCLAW_HTTP_SESSION_ID falls back to OPENCLAW_CLI_SESSION_ID then openclaw-voice", async () => {
+  const configCliOnly = readOpenClawClientConfigFromEnv({
+    OPENCLAW_URL: "http://127.0.0.1:3000/api/chat",
+    OPENCLAW_CLI_SESSION_ID: "cli-session"
+  });
+  assert.equal(configCliOnly.openClawHttpSessionId, "cli-session");
+
+  const configDefault = readOpenClawClientConfigFromEnv({
+    OPENCLAW_URL: "http://127.0.0.1:3000/api/chat"
+  });
+  assert.equal(configDefault.openClawHttpSessionId, "openclaw-voice");
+});
+
+test("caller-supplied sessionId takes precedence over OPENCLAW_HTTP_SESSION_ID", async () => {
+  const config = readOpenClawClientConfigFromEnv({
+    OPENCLAW_URL: "http://127.0.0.1:3000/api/chat",
+    OPENCLAW_HTTP_SESSION_ID: "default-session"
+  });
+
+  const seenBodies = [];
+  const client = createOpenClawClient(config, {
+    fetchImpl: async (_url, options) => {
+      seenBodies.push(JSON.parse(options.body));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ response: "ok" }),
+        text: async () => "",
+        headers: { get: () => "application/json" }
+      };
+    }
+  });
+
+  await client("hello", "caller-session");
+  assert.equal(seenBodies[0].sessionId, "caller-session");
+});
+
+test("empty-response retry omits session even when OPENCLAW_HTTP_SESSION_ID is set", async () => {
+  const config = readOpenClawClientConfigFromEnv({
+    OPENCLAW_URL: "http://127.0.0.1:3000/api/chat",
+    OPENCLAW_HTTP_SESSION_ID: "voice-session"
+  });
+
+  const seenBodies = [];
+  let callCount = 0;
+  const client = createOpenClawClient(config, {
+    fetchImpl: async (_url, options) => {
+      callCount += 1;
+      seenBodies.push(JSON.parse(options.body));
+      if (callCount === 1) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ payloads: [] }),
+          text: async () => "",
+          headers: { get: () => "application/json" }
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ response: "retry ok" }),
+        text: async () => "",
+        headers: { get: () => "application/json" }
+      };
+    }
+  });
+
+  const result = await client("ping", "office");
+  assert.equal(result, "retry ok");
+  assert.equal(callCount, 2);
+  assert.equal(seenBodies[0].sessionId, "office");
+  assert.equal(seenBodies[1].sessionId, undefined);
+});
