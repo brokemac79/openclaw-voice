@@ -31,6 +31,9 @@ const piperLengthScale = process.env.PIPER_LENGTH_SCALE || "";
 const piperNoiseScale = process.env.PIPER_NOISE_SCALE || "";
 const piperNoiseW = process.env.PIPER_NOISE_W || "";
 const piperSentenceSilence = process.env.PIPER_SENTENCE_SILENCE || "";
+const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY || "";
+const elevenLabsVoiceId = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
+const elevenLabsModel = process.env.ELEVENLABS_MODEL || "eleven_monolingual_v1";
 const ttsFallbackProvider = (process.env.TTS_FALLBACK_PROVIDER || "piper").trim().toLowerCase();
 const fasterWhisperModel = process.env.FASTER_WHISPER_MODEL || "base.en";
 const fasterWhisperLanguage = process.env.FASTER_WHISPER_LANGUAGE || "en";
@@ -297,12 +300,50 @@ async function synthesizeSpeechWithEdge(text) {
   };
 }
 
+async function synthesizeSpeechWithElevenLabs(text) {
+  if (!elevenLabsApiKey) {
+    throw new Error("ELEVENLABS_API_KEY is required when TTS provider is elevenlabs");
+  }
+
+  const response = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${elevenLabsVoiceId}`,
+    {
+      method: "POST",
+      headers: {
+        "xi-api-key": elevenLabsApiKey,
+        "Content-Type": "application/json",
+        Accept: "audio/mpeg"
+      },
+      body: JSON.stringify({
+        text: text.trim(),
+        model_id: elevenLabsModel
+      })
+    }
+  );
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`ElevenLabs API error (${response.status}): ${body}`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  return {
+    provider: "elevenlabs",
+    audio: Buffer.from(arrayBuffer),
+    audioMimeType: "audio/mpeg"
+  };
+}
+
 async function synthesizeSpeech(text) {
   const preferred = ttsProvider;
   const fallback = ttsFallbackProvider;
 
   if (preferred === "piper") {
     return synthesizeSpeechWithPiper(text);
+  }
+
+  if (preferred === "elevenlabs") {
+    return synthesizeSpeechWithElevenLabs(text);
   }
 
   if (preferred === "edge") {

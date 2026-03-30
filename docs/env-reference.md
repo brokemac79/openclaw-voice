@@ -77,8 +77,18 @@ Columns:
 
 | Variable | What it is | Example value | Needed for | Where to get it |
 | --- | --- | --- | --- | --- |
-| `TTS_PROVIDER` | Which text-to-speech engine to use first | `edge` | Spoken replies | Choose `edge`, `piper`, or `auto` |
+| `TTS_PROVIDER` | Which text-to-speech engine to use first | `edge` | Spoken replies | Choose `edge`, `piper`, `elevenlabs`, or `auto` |
 | `TTS_FALLBACK_PROVIDER` | Backup TTS provider if the main one fails | `piper` | Edge with Piper fallback | Usually leave `piper` if you install Piper |
+
+## ElevenLabs TTS (advanced / optional)
+
+Skip this section unless you want cloud-based ElevenLabs speech output.
+
+| Variable | What it is | Example value | Needed for | Where to get it |
+| --- | --- | --- | --- | --- |
+| `ELEVENLABS_API_KEY` | Your ElevenLabs API key | `sk_abc123...` | ElevenLabs output | [ElevenLabs dashboard](https://elevenlabs.io) |
+| `ELEVENLABS_VOICE_ID` | Voice to use for synthesis | `21m00Tcm4TlvDq8ikWAM` | ElevenLabs output | ElevenLabs voice library (default is "Rachel") |
+| `ELEVENLABS_MODEL` | Model ID for synthesis | `eleven_monolingual_v1` | ElevenLabs output | ElevenLabs docs — use `eleven_multilingual_v2` for non-English |
 
 ## Piper TTS (advanced / optional)
 
