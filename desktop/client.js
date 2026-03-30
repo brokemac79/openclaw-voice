@@ -45,6 +45,7 @@ const wakeProvider = (process.env.VOICE_CLIENT_WAKE_PROVIDER || "porcupine").tri
 const owwPythonBin = process.env.VOICE_CLIENT_OWW_PYTHON_BIN || "python3";
 const owwModel = process.env.VOICE_CLIENT_OWW_MODEL || "hey_jarvis";
 const owwThreshold = parseFloatWithDefault(process.env.VOICE_CLIENT_OWW_THRESHOLD, 0.5);
+const owwInferenceFramework = process.env.VOICE_CLIENT_OWW_INFERENCE_FRAMEWORK || "onnx";
 
 const hotkeyKey = (process.env.VOICE_CLIENT_HOTKEY_KEY || "SPACE").trim().toUpperCase();
 const hotkeyModifiers = (process.env.VOICE_CLIENT_HOTKEY_MODIFIERS || "CTRL+SHIFT")
@@ -297,7 +298,8 @@ async function startOpenWakeWordDetector(onWake) {
   const args = [
     scriptPath,
     "--model", owwModel,
-    "--threshold", String(owwThreshold)
+    "--threshold", String(owwThreshold),
+    "--inference-framework", owwInferenceFramework
   ];
 
   const child = spawn(owwPythonBin, args, {
