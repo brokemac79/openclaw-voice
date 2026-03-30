@@ -171,6 +171,7 @@ Install first: `pip install openwakeword pyaudio numpy`
 | `VOICE_CLIENT_OWW_MODEL` | Wake word model name or path | `hey_jarvis` | OpenWakeWord mode | Pre-trained model names: `hey_jarvis`, `alexa`, `hey_mycroft`, `hey_rhasspy`; or a path to a custom `.tflite` model |
 | `VOICE_CLIENT_OWW_THRESHOLD` | Detection score threshold (0.0–1.0) | `0.5` | OpenWakeWord mode | Lower = more sensitive, higher = fewer false positives |
 | `VOICE_CLIENT_OWW_PYTHON_BIN` | Python executable used to run the OpenWakeWord sidecar | `python3` | OpenWakeWord mode | The Python executable in your venv or system PATH |
+| `VOICE_CLIENT_OWW_INFERENCE_FRAMEWORK` | Inference backend for OpenWakeWord | `onnx` | OpenWakeWord mode | `onnx` (default, works everywhere) or `tflite` (Linux/Mac only with Python <3.12) |
 
 ## Global hotkey (advanced / optional)
 
