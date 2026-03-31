@@ -169,7 +169,8 @@ export function createOpenClawClient(config, deps = {}) {
     openClawCliSessionId,
     openClawHttpSessionId,
     openClawCliAgent,
-    openClawCliTimeoutMs
+    openClawCliTimeoutMs,
+    openClawVoiceSystemPrompt
   } = config;
 
   const fetchImpl = deps.fetchImpl || fetch;
@@ -245,6 +246,9 @@ export function createOpenClawClient(config, deps = {}) {
     if (openClawCliAgent) {
       args.push("--agent", openClawCliAgent);
     }
+    if (openClawVoiceSystemPrompt) {
+      args.push("--system-prompt", openClawVoiceSystemPrompt);
+    }
 
     const { stdout, stderr } = await execFileAsync(openClawCliBin, args, {
       timeout: openClawCliTimeoutMs,
@@ -286,6 +290,10 @@ export function readOpenClawClientConfigFromEnv(env) {
     openClawCliSessionId: env.OPENCLAW_CLI_SESSION_ID || "openclaw-voice",
     openClawHttpSessionId: env.OPENCLAW_HTTP_SESSION_ID || env.OPENCLAW_CLI_SESSION_ID || "openclaw-voice",
     openClawCliAgent: env.OPENCLAW_CLI_AGENT || "",
-    openClawCliTimeoutMs: Number(env.OPENCLAW_CLI_TIMEOUT_MS || 120000)
+    openClawCliTimeoutMs: Number(env.OPENCLAW_CLI_TIMEOUT_MS || 120000),
+    openClawVoiceSystemPrompt: env.OPENCLAW_VOICE_SYSTEM_PROMPT ||
+      "You are a voice assistant. Respond conversationally without markdown formatting. " +
+      "Avoid asterisks, bullet points, numbered lists, headers, and code blocks. " +
+      "Spell out numbers naturally. Keep answers concise and direct."
   };
 }

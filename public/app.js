@@ -29,6 +29,12 @@ const mediaState = {
   isRecording: false
 };
 
+const sttState = {
+  provider: null,
+  recognition: null,
+  isListening: false
+};
+
 const RECORDER_FORMATS = [
   { mimeType: "audio/webm;codecs=opus", extension: "webm" },
   { mimeType: "audio/webm", extension: "webm" },
@@ -289,6 +295,119 @@ async function postVoiceTurn(blob, filename) {
   setStatus("Reply ready. You can ask another question.", "ok");
 }
 
+async function postVoiceTurnText(transcription) {
+  const token = settings.token;
+  const sessionId = settings.sessionId;
+  const sonosRoom = settings.sonosRoom;
+
+  if (!token) {
+    setStatus("Please save an access token before recording.", "error");
+    return;
+  }
+
+  setStatus("Sending transcription. Waiting for assistant reply...");
+
+  const form = new FormData();
+  form.append("transcription", transcription);
+  if (sessionId) {
+    form.append("sessionId", sessionId);
+  }
+  if (sonosRoom) {
+    form.append("sonosRoom", sonosRoom);
+  }
+
+  const response = await fetch(getVoiceTurnEndpoint(), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: form
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const reason = body.details || body.error || response.statusText;
+    throw new Error(reason);
+  }
+
+  const data = await response.json();
+  transcriptionEl.textContent = data.transcription || "(empty)";
+  responseEl.textContent = data.responseText || "(empty)";
+
+  const src = `data:${data.audioMimeType};base64,${data.audioBase64}`;
+  player.src = src;
+  try {
+    await player.play();
+  } catch {
+    setStatus("Reply received. Tap play on the audio controls to hear it.");
+    return;
+  }
+
+  setStatus("Reply ready. You can ask another question.", "ok");
+}
+
+function startBrowserSttRecording() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    setStatus("This browser does not support Web Speech API.", "error");
+    return;
+  }
+
+  if (sttState.isListening) {
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.lang = "en-US";
+
+  sttState.recognition = recognition;
+  sttState.isListening = true;
+  recordButton.classList.add("is-recording");
+  setStatus("Listening via Web Speech API... release to send.");
+
+  recognition.addEventListener("result", async (event) => {
+    const transcript = Array.from(event.results)
+      .map((r) => r[0].transcript)
+      .join(" ")
+      .trim();
+
+    sttState.isListening = false;
+    recordButton.classList.remove("is-recording");
+
+    if (!transcript) {
+      setStatus("No speech detected. Try again.", "error");
+      return;
+    }
+
+    try {
+      await postVoiceTurnText(transcript);
+    } catch (error) {
+      setStatus(`Request failed: ${error.message}. Check URL/token and try again.`, "error");
+    }
+  });
+
+  recognition.addEventListener("error", (event) => {
+    sttState.isListening = false;
+    recordButton.classList.remove("is-recording");
+    setStatus(`Speech recognition error: ${event.error}`, "error");
+  });
+
+  recognition.addEventListener("end", () => {
+    sttState.isListening = false;
+    recordButton.classList.remove("is-recording");
+  });
+
+  recognition.start();
+}
+
+function stopBrowserSttRecording() {
+  if (sttState.recognition && sttState.isListening) {
+    sttState.recognition.stop();
+  }
+}
+
 function startRecording() {
   if (!mediaState.stream || mediaState.isRecording || recordButton.disabled) {
     return;
@@ -338,22 +457,38 @@ function stopRecording() {
   }
 }
 
+function handleStartRecording() {
+  if (sttState.provider === "browser") {
+    startBrowserSttRecording();
+  } else {
+    startRecording();
+  }
+}
+
+function handleStopRecording() {
+  if (sttState.provider === "browser") {
+    stopBrowserSttRecording();
+  } else {
+    stopRecording();
+  }
+}
+
 recordButton.addEventListener("pointerdown", (event) => {
   event.preventDefault();
   recordButton.setPointerCapture(event.pointerId);
-  startRecording();
+  handleStartRecording();
 });
 recordButton.addEventListener("pointerup", (event) => {
   event.preventDefault();
-  stopRecording();
+  handleStopRecording();
 });
 recordButton.addEventListener("pointercancel", (event) => {
   event.preventDefault();
-  stopRecording();
+  handleStopRecording();
 });
 recordButton.addEventListener("pointerleave", (event) => {
   event.preventDefault();
-  stopRecording();
+  handleStopRecording();
 });
 
 recordButton.addEventListener("keydown", (event) => {
@@ -362,14 +497,14 @@ recordButton.addEventListener("keydown", (event) => {
   }
   if (event.key === " " || event.key === "Enter") {
     event.preventDefault();
-    startRecording();
+    handleStartRecording();
   }
 });
 
 recordButton.addEventListener("keyup", (event) => {
   if (event.key === " " || event.key === "Enter") {
     event.preventDefault();
-    stopRecording();
+    handleStopRecording();
   }
 });
 
@@ -380,6 +515,20 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
 
+async function detectSttProvider() {
+  try {
+    const healthUrl = new URL("/health", settings.serviceUrl).toString();
+    const response = await fetch(healthUrl);
+    if (response.ok) {
+      const data = await response.json();
+      sttState.provider = data.sttProvider || null;
+    }
+  } catch {
+    // Health check failed; fall back to server-side STT (default behavior).
+  }
+}
+
 loadSettings();
 setReadyState();
+detectSttProvider();
 ensureMic();
