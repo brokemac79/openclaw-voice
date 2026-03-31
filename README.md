@@ -133,7 +133,7 @@ You speak -> speech-to-text -> OpenClaw -> text-to-speech -> audio reply
 
 - Pluggable STT provider system (`STT_PROVIDER`): `faster-whisper` (default, local), `browser` (Web Speech API, no server audio), `openai-whisper`, `google`, `deepgram`, `vosk` (offline), `azure`
 - Sonos output integration through a local HTTP relay endpoint
-- Shared `sonos-relay-lib.js` exports: `trimTrailingSlash`, `mediaExtensionFromMime`, `buildSonosClipUrl` for relay service implementations
+- Shared `sonos-relay-lib.js` exports: `buildSoapEnvelope`, `sendSoapAction`, `setSonosUri`, `playSonos`, `escapeXml` for relay service implementations
 - Desktop client (`npm run desktop:client`) for non-browser usage
 - Wake word activation (`Hey OpenClaw`) via Picovoice Porcupine
 - Global hotkey fallback trigger when wake word is unavailable
