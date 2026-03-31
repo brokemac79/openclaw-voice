@@ -247,6 +247,12 @@ If you only want to talk to OpenClaw in a browser, stop here and use `docs/user-
      - If a turn includes `systemctl --user restart openclaw-gateway`, the server runs that turn in an isolated one-shot session id so your primary session id is not terminated.
      - Chained restart commands (for example `systemctl --user restart openclaw-gateway && curl ...`) are rejected with a clear warning because the restart terminates the active session before chained commands can continue.
 
+     Compatibility note for older `openclaw` CLI builds:
+
+     - If the local CLI does not support `--system-prompt`, OpenClaw Voice retries the same fallback turn once without that flag.
+     - You may see this log line during that retry: `openclaw CLI rejected --system-prompt; retrying fallback command without that flag for compatibility.`
+     - This retry is expected behavior and is not a failure by itself.
+
       Need a plain-English walkthrough for finding the real upstream URL and token requirements? Use `docs/host-it-yourself.md#how-do-i-find-my-real-openclaw-url`.
 
 5. Start server:
@@ -776,6 +782,42 @@ Expected relay behavior:
 - return JSON status
 
 ## API contract
+
+## Voice pipeline diagnostics (structured logs)
+
+When a voice turn fails, OpenClaw Voice emits JSON log lines to stderr/journal so you can see exactly which stage failed.
+
+Log shape:
+
+```json
+{
+  "type": "voice_pipeline",
+  "at": "2026-03-31T23:00:00.000Z",
+  "event": "stage_start|stage_success|stage_failure|pipeline_failure",
+  "stage": "...",
+  "failedStage": "...",
+  "error": { "name": "...", "message": "..." }
+}
+```
+
+Typical stage keys in current releases:
+
+- `validate_input`
+- `transcribe_audio`
+- `query_openclaw`
+- `synthesize_tts`
+- `route_sonos`
+- `respond`
+
+Older releases may emit stage labels such as `stt`, `llm`, or `tts`. Use whichever label appears in your logs.
+
+Quick interpretation:
+
+- `validate_input`: missing upload/transcription payload
+- `transcribe_audio`: STT dependency/config issue
+- `query_openclaw`: upstream URL/token/session/fallback issue
+- `synthesize_tts`: TTS provider/model/credential issue
+- `route_sonos`: relay network/auth/room routing issue
 
 ### `POST /api/voice/turn`
 

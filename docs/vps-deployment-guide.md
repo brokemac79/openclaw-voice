@@ -282,6 +282,31 @@ From another device/browser:
 - Confirm enabled state: `sudo systemctl is-enabled openclaw-voice`
 - Re-enable if needed: `sudo systemctl enable openclaw-voice`
 
+### Voice turn fails and you need exact failure stage
+
+1. Pull recent structured pipeline logs:
+
+```bash
+sudo journalctl -u openclaw-voice -n 300 --no-pager | grep '"type":"voice_pipeline"'
+```
+
+2. Look for the most recent `"event":"pipeline_failure"` line and read:
+
+- `failedStage`
+- `error.message`
+
+3. Use this stage map:
+
+- `validate_input`: request payload issue (missing browser transcription or missing uploaded audio)
+- `transcribe_audio`: STT chain issue (`faster-whisper`, Python path, ffmpeg, model)
+- `query_openclaw`: upstream OpenClaw URL/auth/session or fallback CLI issue
+- `synthesize_tts`: TTS provider credentials/dependencies/config
+- `route_sonos`: relay reachability/auth/room mapping
+
+4. If your logs show `openclaw CLI rejected --system-prompt; retrying fallback command without that flag for compatibility.`, treat it as a compatibility warning, not a hard failure. If the turn still fails after that retry, verify `OPENCLAW_CLI_BIN`, `OPENCLAW_AUTH_BEARER`, and `OPENCLAW_GATEWAY_TOKEN` in `/opt/openclaw-voice/.env`.
+
+Note: older builds may emit stage names such as `stt`, `llm`, or `tts` instead of the current names above.
+
 ### Sonos relay check fails or Sonos playback is silent
 
 - Confirm relay env vars are present in `/opt/openclaw-voice/.env` (`SONOS_RELAY_URL`, optional auth/fallback values)

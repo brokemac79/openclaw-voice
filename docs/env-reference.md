@@ -53,7 +53,7 @@ Columns:
 | `OPENCLAW_CLI_SESSION_ID` | Default CLI session id when browser request omits `sessionId`; also used as fallback for `OPENCLAW_HTTP_SESSION_ID` | `openclaw-voice` | CLI fallback mode | Choose any stable session label |
 | `OPENCLAW_CLI_AGENT` | Optional explicit OpenClaw agent id for fallback turns | `ops` | Multi-agent OpenClaw setups using fallback | Your OpenClaw agent config |
 | `OPENCLAW_CLI_TIMEOUT_MS` | Timeout for one fallback CLI turn | `120000` | CLI fallback mode | Set based on expected local model latency |
-| `OPENCLAW_VOICE_SYSTEM_PROMPT` | System prompt injected into CLI fallback turns to encourage spoken, non-markdown responses | `You are a voice assistant. Respond conversationally without markdown formatting. Avoid asterisks, bullet points, numbered lists, headers, and code blocks. Spell out numbers naturally. Keep answers concise and direct.` | CLI fallback mode | Override when you want a different voice persona or response style; leave unset to use the built-in default |
+| `OPENCLAW_VOICE_SYSTEM_PROMPT` | System prompt injected into CLI fallback turns to encourage spoken, non-markdown responses. If the local CLI does not support `--system-prompt`, OpenClaw Voice retries once without that flag for compatibility. | `You are a voice assistant. Respond conversationally without markdown formatting. Avoid asterisks, bullet points, numbered lists, headers, and code blocks. Spell out numbers naturally. Keep answers concise and direct.` | CLI fallback mode | Override when you want a different voice persona or response style; leave unset to use the built-in default |
 
 ## Speech-to-text (STT)
 
