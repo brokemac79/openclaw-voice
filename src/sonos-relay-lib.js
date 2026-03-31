@@ -131,3 +131,45 @@ export function escapeXml(str) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
 }
+
+/**
+ * Remove trailing slashes from a URL string.
+ *
+ * @param {string} url
+ * @returns {string}
+ */
+export function trimTrailingSlash(url) {
+  return url.replace(/\/+$/, "");
+}
+
+const MIME_TO_EXT = {
+  "audio/mpeg": "mp3",
+  "audio/wav": "wav",
+  "audio/ogg": "ogg",
+  "audio/flac": "flac",
+  "audio/aac": "aac",
+  "application/octet-stream": "bin"
+};
+
+/**
+ * Map an audio MIME type to a file extension.
+ *
+ * @param {string} mime
+ * @returns {string}
+ */
+export function mediaExtensionFromMime(mime) {
+  return MIME_TO_EXT[mime] || "bin";
+}
+
+/**
+ * Build a Sonos HTTP API clip endpoint URL.
+ *
+ * @param {string} baseUrl  - Sonos HTTP API base URL (trailing slashes stripped)
+ * @param {string} speaker  - Speaker/room name
+ * @param {string} mediaUrl - Public URL of the audio clip
+ * @returns {string}
+ */
+export function buildSonosClipUrl(baseUrl, speaker, mediaUrl) {
+  const base = trimTrailingSlash(baseUrl);
+  return `${base}/${encodeURIComponent(speaker)}/clip/${encodeURIComponent(mediaUrl)}`;
+}
