@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
@@ -13,6 +14,7 @@ import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 import { createOpenClawClient, readOpenClawClientConfigFromEnv } from "./openclaw-client.js";
 import { stripMarkdown } from "./strip-markdown.js";
 import { createTranscriber, readSttConfigFromEnv } from "./stt.js";
+import { createVoicePipelineLogger } from "./voice-pipeline-logger.js";
 
 dotenv.config();
 
@@ -433,48 +435,114 @@ app.post("/api/voice/alerts", requireBearer, async (req, res) => {
 });
 
 app.post("/api/voice/turn", requireBearer, upload.single("audio"), async (req, res) => {
+  const requestId =
+    (typeof req.headers["x-request-id"] === "string" && req.headers["x-request-id"].trim()) || randomUUID();
+  const logger = createVoicePipelineLogger({
+    context: {
+      requestId,
+      route: "/api/voice/turn",
+      sttProvider: sttConfig.sttProvider
+    }
+  });
+  let failedStage = "unknown";
+
   try {
     let transcribedText;
+
+    failedStage = "validate_input";
+    logger.stageStart(failedStage, {
+      mode: sttConfig.sttProvider === "browser" ? "browser_transcription" : "server_transcription"
+    });
 
     if (sttConfig.sttProvider === "browser") {
       transcribedText = (req.body?.transcription || "").trim();
       if (!transcribedText) {
+        const validationError = new Error("Missing transcription field (STT_PROVIDER=browser expects client-side transcription)");
+        logger.stageFailure(failedStage, validationError);
         res.status(400).json({ error: "Missing transcription field (STT_PROVIDER=browser expects client-side transcription)" });
         return;
       }
     } else {
       if (!req.file?.buffer) {
+        const validationError = new Error("Missing audio upload");
+        logger.stageFailure(failedStage, validationError);
         res.status(400).json({ error: "Missing audio upload" });
         return;
       }
 
+      failedStage = "transcribe_audio";
+      logger.stageSuccess("validate_input");
+      logger.stageStart(failedStage, {
+        bytes: req.file.buffer.length,
+        mimeType: req.file.mimetype || "unknown"
+      });
+
       const uploadFilename = req.file.originalname || "recording.bin";
       const uploadMimeType = resolveAudioContentType(req.file.mimetype, uploadFilename);
       transcribedText = await transcribeAudio(req.file.buffer, uploadFilename, uploadMimeType);
+      logger.stageSuccess(failedStage, {
+        transcriptChars: transcribedText.length
+      });
+    }
+
+    if (sttConfig.sttProvider === "browser") {
+      logger.stageSuccess("validate_input", {
+        transcriptChars: transcribedText.length
+      });
     }
 
     if (!transcribedText) {
+      failedStage = "transcribe_audio";
+      const emptyTranscriptError = new Error("Unable to transcribe audio");
+      logger.stageFailure(failedStage, emptyTranscriptError);
       res.status(422).json({ error: "Unable to transcribe audio" });
       return;
     }
 
+    failedStage = "query_openclaw";
+    logger.stageStart(failedStage, {
+      hasSessionId: Boolean(req.body?.sessionId)
+    });
     const openClawResponse = await queryOpenClaw(transcribedText, req.body?.sessionId);
     const spokenResponse = (openClawResponse || "").trim();
+    logger.stageSuccess(failedStage, {
+      responseChars: spokenResponse.length
+    });
 
     if (!spokenResponse) {
+      failedStage = "query_openclaw";
+      const emptyResponseError = new Error("OpenClaw returned an empty response");
+      logger.stageFailure(failedStage, emptyResponseError);
       res.status(422).json({ error: "OpenClaw returned an empty response" });
       return;
     }
 
+    failedStage = "synthesize_tts";
+    logger.stageStart(failedStage);
     const synthesis = await synthesizeSpeech(spokenResponse);
     const audioBase64 = synthesis.audio.toString("base64");
+    logger.stageSuccess(failedStage, {
+      provider: synthesis.provider,
+      audioBytes: synthesis.audio.length
+    });
+
+    failedStage = "route_sonos";
+    logger.stageStart(failedStage, {
+      room: req.body?.sonosRoom || sonosRoomDefault || ""
+    });
     const sonos = await sendAudioToSonosRelay(
       synthesis.audio,
       spokenResponse,
       req.body?.sonosRoom,
       synthesis.audioMimeType
     );
+    logger.stageSuccess(failedStage, {
+      routed: Boolean(sonos?.routed)
+    });
 
+    logger.stageSuccess("respond", {
+      ok: true
+    });
     res.json({
       transcription: transcribedText,
       responseText: spokenResponse,
@@ -484,8 +552,10 @@ app.post("/api/voice/turn", requireBearer, upload.single("audio"), async (req, r
       sonos
     });
   } catch (error) {
+    logger.pipelineFailure(failedStage, error);
     res.status(500).json({
       error: "Voice pipeline failed",
+      stage: failedStage,
       details: error instanceof Error ? error.message : String(error)
     });
   }
