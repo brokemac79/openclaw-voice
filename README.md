@@ -109,7 +109,7 @@ Pick the smallest setup that matches what you want to do.
 | Setup | Best for | What you need | Start here |
 | --- | --- | --- | --- |
 | Browser-only | Someone who just wants push-to-talk in a web page | Running voice server, browser mic access, token | `docs/user-guide.md` |
-| Browser + local speech | Self-hosters who want speech-to-text on their own machine | Browser-only setup plus Python, `faster-whisper`, `ffmpeg` | `docs/host-it-yourself.md` |
+| Browser + local speech | Self-hosters who want speech-to-text on their own machine | Browser-only setup plus a configured STT provider (`faster-whisper` by default; see `STT_PROVIDER` in `docs/env-reference.md`) | `docs/host-it-yourself.md` |
 | Desktop + wake word | Always-on desk or mini-PC setups | Local server plus desktop client, `sox`, optional Porcupine wake word files | `docs/desktop-client-walkthrough.md` |
 | Sonos playback | Homes/offices that want spoken replies on Sonos | Any setup above plus an external Sonos relay service | `docs/user-guide.md` and `docs/env-reference.md` |
 
@@ -131,15 +131,17 @@ You speak -> speech-to-text -> OpenClaw -> text-to-speech -> audio reply
 
 ## For developers: implementation details
 
-- Local STT via `faster-whisper` (no OpenAI Whisper dependency)
+- Pluggable STT provider system (`STT_PROVIDER`): `faster-whisper` (default, local), `browser` (Web Speech API, no server audio), `openai-whisper`, `google`, `deepgram`, `vosk` (offline), `azure`
 - Sonos output integration through a local HTTP relay endpoint
+- Shared `sonos-relay-lib.js` exports: `trimTrailingSlash`, `mediaExtensionFromMime`, `buildSonosClipUrl` for relay service implementations
 - Desktop client (`npm run desktop:client`) for non-browser usage
 - Wake word activation (`Hey OpenClaw`) via Picovoice Porcupine
 - Global hotkey fallback trigger when wake word is unavailable
 - Wake confirmation beep on trigger
 - Proactive Sonos alert endpoint (`POST /api/voice/alerts`) for doorbell/calendar/energy events
 - Ambient desktop loop mode for always-on background capture
-- Switchable TTS providers (`TTS_PROVIDER=edge|piper|auto`) with Piper fallback support
+- Switchable TTS providers (`TTS_PROVIDER=edge|piper|auto`) with Piper fallback support; markdown stripped before synthesis on all TTS paths
+- Voice-optimised system prompt (`OPENCLAW_VOICE_SYSTEM_PROMPT`) injected on CLI fallback turns to avoid markdown in spoken replies
 - Dual-relay support for Sonos migration (`SONOS_RELAY_URL` / `SONOS_RELAY_PI_URL` + `SONOS_RELAY_FALLBACK_URL`)
 
 ## Prerequisites (single checklist)
@@ -256,6 +258,8 @@ If you only want to talk to OpenClaw in a browser, stop here and use `docs/user-
 6. Open `http://localhost:8787` and use the web client.
 
 ## faster-whisper Python setup (beginner-friendly)
+
+This section applies when `STT_PROVIDER=faster-whisper` (the default). If you are using a different STT provider, skip this section and see `docs/env-reference.md` for that provider's setup.
 
 If you have never installed Python tooling before, follow these steps exactly on the same machine that runs the Node server.
 
@@ -394,7 +398,7 @@ Run this checklist in order so each layer is validated before the next one.
 curl http://localhost:8787/health
 ```
 
-Expected: `{"ok":true}`
+Expected: `{"ok":true,"sttProvider":"faster-whisper","ttsProvider":"edge",...}`
 
 `curl` is a terminal command available by default on macOS, Linux, and Windows 10+. If you prefer, open `http://localhost:8787/health` in your browser instead - you should see `{"ok":true}`.
 
@@ -613,6 +617,7 @@ OpenClaw options:
 - `OPENCLAW_METHOD` (default `POST`)
 - `OPENCLAW_INPUT_FIELD` (default `input`)
 - `OPENCLAW_OUTPUT_FIELD` (default `response`)
+- `OPENCLAW_VOICE_SYSTEM_PROMPT` (CLI fallback mode; default: built-in voice-optimised prompt)
 
 ### OpenClaw upstream endpoint contract
 
@@ -655,7 +660,11 @@ Troubleshooting wrong endpoint errors:
 - `405` usually means the endpoint does not allow the configured method (default is `POST`).
 - HTML responses (for example `<!doctype html>`) usually mean `OPENCLAW_URL` is pointed at a web page instead of the JSON API endpoint.
 
-faster-whisper options:
+STT provider options:
+
+- `STT_PROVIDER` (default `faster-whisper`; also supports `browser`, `openai-whisper`, `google`, `deepgram`, `vosk`, `azure`)
+
+faster-whisper options (when `STT_PROVIDER=faster-whisper`):
 
 - `FASTER_WHISPER_PYTHON_BIN` (default `python3`)
 - `FASTER_WHISPER_MODEL` (default `base.en`)
@@ -663,6 +672,37 @@ faster-whisper options:
 - `FASTER_WHISPER_DEVICE` (default `auto`)
 - `FASTER_WHISPER_COMPUTE_TYPE` (default `int8`)
 - `FASTER_WHISPER_TIMEOUT_MS` (default `120000`)
+
+OpenAI Whisper API options (when `STT_PROVIDER=openai-whisper`):
+
+- `OPENAI_API_KEY` (required)
+- `OPENAI_WHISPER_MODEL` (default `whisper-1`)
+- `OPENAI_WHISPER_LANGUAGE` (default `en`)
+- `OPENAI_WHISPER_BASE_URL` (default `https://api.openai.com`)
+
+Google STT options (when `STT_PROVIDER=google`):
+
+- `GOOGLE_STT_API_KEY` (required)
+- `GOOGLE_STT_LANGUAGE_CODE` (default `en-US`)
+- `GOOGLE_STT_MODEL` (default `default`)
+
+Deepgram options (when `STT_PROVIDER=deepgram`):
+
+- `DEEPGRAM_API_KEY` (required)
+- `DEEPGRAM_MODEL` (default `nova-2`)
+- `DEEPGRAM_LANGUAGE` (default `en`)
+
+Vosk options (when `STT_PROVIDER=vosk`):
+
+- `VOSK_MODEL_PATH` (required; path to downloaded Vosk model directory)
+- `VOSK_PYTHON_BIN` (default `python3`)
+- `VOSK_TIMEOUT_MS` (default `120000`)
+
+Azure Cognitive Services STT options (when `STT_PROVIDER=azure`):
+
+- `AZURE_SPEECH_KEY` (required)
+- `AZURE_SPEECH_REGION` (required)
+- `AZURE_SPEECH_LANGUAGE` (default `en-US`)
 
 Sonos relay options:
 

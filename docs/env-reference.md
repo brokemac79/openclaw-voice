@@ -53,17 +53,87 @@ Columns:
 | `OPENCLAW_CLI_SESSION_ID` | Default CLI session id when browser request omits `sessionId`; also used as fallback for `OPENCLAW_HTTP_SESSION_ID` | `openclaw-voice` | CLI fallback mode | Choose any stable session label |
 | `OPENCLAW_CLI_AGENT` | Optional explicit OpenClaw agent id for fallback turns | `ops` | Multi-agent OpenClaw setups using fallback | Your OpenClaw agent config |
 | `OPENCLAW_CLI_TIMEOUT_MS` | Timeout for one fallback CLI turn | `120000` | CLI fallback mode | Set based on expected local model latency |
+| `OPENCLAW_VOICE_SYSTEM_PROMPT` | System prompt injected into CLI fallback turns to encourage spoken, non-markdown responses | `You are a voice assistant. Respond conversationally without markdown formatting. Avoid asterisks, bullet points, numbered lists, headers, and code blocks. Spell out numbers naturally. Keep answers concise and direct.` | CLI fallback mode | Override when you want a different voice persona or response style; leave unset to use the built-in default |
 
-## Speech-to-text (`faster-whisper`)
+## Speech-to-text (STT)
 
 | Variable | What it is | Example value | Needed for | Where to get it |
 | --- | --- | --- | --- | --- |
-| `FASTER_WHISPER_PYTHON_BIN` | Python command used to run the transcription helper | `python3` | Local speech transcription | The Python executable available on your machine |
-| `FASTER_WHISPER_MODEL` | Speech model size and language | `base.en` | Local speech transcription | Choose from faster-whisper model options |
-| `FASTER_WHISPER_LANGUAGE` | Language hint for transcription | `en` | Local speech transcription | Pick the spoken language you expect |
-| `FASTER_WHISPER_DEVICE` | Hardware target for transcription | `auto` | Local speech transcription | Usually `auto` or `cpu` |
-| `FASTER_WHISPER_COMPUTE_TYPE` | Performance and memory setting | `int8` | Local speech transcription | Usually keep the default for CPU use |
-| `FASTER_WHISPER_TIMEOUT_MS` | Max wait time before a transcription is treated as failed | `120000` | Local speech transcription | Pick a timeout that matches your hardware |
+| `STT_PROVIDER` | Which speech-to-text engine to use | `faster-whisper` | All self-hosted setups with server-side transcription | Choose `faster-whisper` (default), `browser`, `openai-whisper`, `google`, `deepgram`, `vosk`, or `azure` |
+
+### faster-whisper (default, local)
+
+The default provider. Runs transcription locally using the `faster-whisper` Python package. No API key required.
+
+| Variable | What it is | Example value | Needed for | Where to get it |
+| --- | --- | --- | --- | --- |
+| `FASTER_WHISPER_PYTHON_BIN` | Python command used to run the transcription helper | `python3` | `STT_PROVIDER=faster-whisper` | The Python executable available on your machine |
+| `FASTER_WHISPER_MODEL` | Speech model size and language | `base.en` | `STT_PROVIDER=faster-whisper` | Choose from faster-whisper model options |
+| `FASTER_WHISPER_LANGUAGE` | Language hint for transcription | `en` | `STT_PROVIDER=faster-whisper` | Pick the spoken language you expect |
+| `FASTER_WHISPER_DEVICE` | Hardware target for transcription | `auto` | `STT_PROVIDER=faster-whisper` | Usually `auto` or `cpu` |
+| `FASTER_WHISPER_COMPUTE_TYPE` | Performance and memory setting | `int8` | `STT_PROVIDER=faster-whisper` | Usually keep the default for CPU use |
+| `FASTER_WHISPER_TIMEOUT_MS` | Max wait time before a transcription is treated as failed | `120000` | `STT_PROVIDER=faster-whisper` | Pick a timeout that matches your hardware |
+
+### browser (advanced / optional)
+
+With `STT_PROVIDER=browser`, speech recognition runs entirely in the browser via the Web Speech API. The server does not receive or process any audio file. Instead, the browser submits the transcribed text in the `transcription` field of the request body. No server-side Python setup is required.
+
+There are no additional environment variables for this provider.
+
+### openai-whisper (advanced / optional)
+
+Skip this section unless you want cloud transcription via the OpenAI Whisper API. Requires an OpenAI API key.
+
+| Variable | What it is | Example value | Needed for | Where to get it |
+| --- | --- | --- | --- | --- |
+| `OPENAI_API_KEY` | Your OpenAI API key | `sk-...` | `STT_PROVIDER=openai-whisper` | [OpenAI dashboard](https://platform.openai.com/account/api-keys) |
+| `OPENAI_WHISPER_MODEL` | Whisper model variant to request | `whisper-1` | `STT_PROVIDER=openai-whisper` | OpenAI API docs; usually keep the default |
+| `OPENAI_WHISPER_LANGUAGE` | Language hint sent to the API | `en` | `STT_PROVIDER=openai-whisper` | Optional; omit for auto-detect |
+| `OPENAI_WHISPER_BASE_URL` | Base URL for the OpenAI-compatible Whisper endpoint | `https://api.openai.com` | `STT_PROVIDER=openai-whisper` | Change only if you are using a self-hosted or compatible endpoint |
+
+### google (advanced / optional)
+
+Skip this section unless you want cloud transcription via the Google Cloud Speech-to-Text API. Requires a Google API key.
+
+| Variable | What it is | Example value | Needed for | Where to get it |
+| --- | --- | --- | --- | --- |
+| `GOOGLE_STT_API_KEY` | Your Google Cloud API key with Speech-to-Text enabled | `AIza...` | `STT_PROVIDER=google` | [Google Cloud console](https://console.cloud.google.com) |
+| `GOOGLE_STT_LANGUAGE_CODE` | BCP-47 language code for transcription | `en-US` | `STT_PROVIDER=google` | Google Speech-to-Text language support docs |
+| `GOOGLE_STT_MODEL` | Google STT model to use | `default` | `STT_PROVIDER=google` | Optional; `default` works for most use cases |
+
+### deepgram (advanced / optional)
+
+Skip this section unless you want cloud transcription via the Deepgram API.
+
+| Variable | What it is | Example value | Needed for | Where to get it |
+| --- | --- | --- | --- | --- |
+| `DEEPGRAM_API_KEY` | Your Deepgram API key | `abc123...` | `STT_PROVIDER=deepgram` | [Deepgram console](https://console.deepgram.com) |
+| `DEEPGRAM_MODEL` | Deepgram transcription model | `nova-2` | `STT_PROVIDER=deepgram` | Deepgram docs; `nova-2` is the recommended default |
+| `DEEPGRAM_LANGUAGE` | Language code for transcription | `en` | `STT_PROVIDER=deepgram` | Deepgram language support docs |
+
+### vosk (advanced / optional)
+
+Skip this section unless you want fully offline transcription using Vosk. Requires a downloaded Vosk model directory and Python packages.
+
+Install first: `pip install vosk soundfile`
+
+Download a model from <https://alphacephei.com/vosk/models> and unzip it to a local directory.
+
+| Variable | What it is | Example value | Needed for | Where to get it |
+| --- | --- | --- | --- | --- |
+| `VOSK_MODEL_PATH` | Absolute path to the unzipped Vosk model directory | `/opt/vosk/vosk-model-en-us-0.22` | `STT_PROVIDER=vosk` | Unzip a model downloaded from the Vosk models page |
+| `VOSK_PYTHON_BIN` | Python executable used to run the Vosk transcription helper | `python3` | `STT_PROVIDER=vosk` | The Python executable in your venv or system PATH |
+| `VOSK_TIMEOUT_MS` | Max wait time for a Vosk transcription | `120000` | `STT_PROVIDER=vosk` | Increase if transcription times out on slow hardware |
+
+### azure (advanced / optional)
+
+Skip this section unless you want cloud transcription via Azure Cognitive Services Speech.
+
+| Variable | What it is | Example value | Needed for | Where to get it |
+| --- | --- | --- | --- | --- |
+| `AZURE_SPEECH_KEY` | Your Azure Cognitive Services subscription key | `abc123...` | `STT_PROVIDER=azure` | [Azure portal](https://portal.azure.com) — Speech resource keys |
+| `AZURE_SPEECH_REGION` | Azure region where your Speech resource is deployed | `eastus` | `STT_PROVIDER=azure` | Azure portal — Speech resource overview |
+| `AZURE_SPEECH_LANGUAGE` | BCP-47 language code for transcription | `en-US` | `STT_PROVIDER=azure` | Azure Speech language support docs |
 
 ## Edge TTS
 
