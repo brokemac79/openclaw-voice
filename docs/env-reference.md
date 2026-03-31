@@ -158,7 +158,7 @@ Skip this section unless you want cloud-based ElevenLabs speech output.
 | Variable | What it is | Example value | Needed for | Where to get it |
 | --- | --- | --- | --- | --- |
 | `ELEVENLABS_API_KEY` | Your ElevenLabs API key | `sk_abc123...` | ElevenLabs output | [ElevenLabs dashboard](https://elevenlabs.io) |
-| `ELEVENLABS_VOICE_ID` | Voice to use for synthesis | `21m00Tcm4TlvDq8ikWAM` | ElevenLabs output | ElevenLabs voice library (default is "Rachel") |
+| `ELEVENLABS_VOICE_ID` | Voice to use for synthesis | `onwK4e9ZLuTAKqWW03F9` | ElevenLabs output | ElevenLabs voice library (default is "Daniel", British English) |
 | `ELEVENLABS_MODEL` | Model ID for synthesis | `eleven_monolingual_v1` | ElevenLabs output | ElevenLabs docs — use `eleven_multilingual_v2` for non-English |
 
 ## Piper TTS (advanced / optional)

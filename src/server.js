@@ -34,7 +34,7 @@ const piperNoiseScale = process.env.PIPER_NOISE_SCALE || "";
 const piperNoiseW = process.env.PIPER_NOISE_W || "";
 const piperSentenceSilence = process.env.PIPER_SENTENCE_SILENCE || "";
 const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY || "";
-const elevenLabsVoiceId = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
+const elevenLabsVoiceId = process.env.ELEVENLABS_VOICE_ID || "onwK4e9ZLuTAKqWW03F9";
 const elevenLabsModel = process.env.ELEVENLABS_MODEL || "eleven_monolingual_v1";
 const ttsFallbackProvider = (process.env.TTS_FALLBACK_PROVIDER || "piper").trim().toLowerCase();
 const sttConfig = readSttConfigFromEnv(process.env);
@@ -302,7 +302,14 @@ async function synthesizeSpeech(text) {
   }
 
   if (preferred === "elevenlabs") {
-    return synthesizeSpeechWithElevenLabs(cleanText);
+    try {
+      return await synthesizeSpeechWithElevenLabs(cleanText);
+    } catch (error) {
+      process.stderr.write(
+        `ElevenLabs TTS failed, falling back to Edge TTS: ${error instanceof Error ? error.message : String(error)}\n`
+      );
+      return synthesizeSpeechWithEdge(cleanText);
+    }
   }
 
   if (preferred === "edge") {
