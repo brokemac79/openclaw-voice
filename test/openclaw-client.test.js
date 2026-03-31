@@ -307,6 +307,110 @@ test("caller-supplied sessionId takes precedence over OPENCLAW_HTTP_SESSION_ID",
   assert.equal(seenBodies[0].sessionId, "caller-session");
 });
 
+// ---------------------------------------------------------------------------
+// #68 — voice-optimised system prompt
+// ---------------------------------------------------------------------------
+
+test("readOpenClawClientConfigFromEnv includes a non-empty default voice system prompt", () => {
+  const config = readOpenClawClientConfigFromEnv({
+    OPENCLAW_URL: "http://127.0.0.1:3000/api/chat"
+  });
+  assert.ok(
+    typeof config.openClawVoiceSystemPrompt === "string" &&
+      config.openClawVoiceSystemPrompt.length > 0,
+    "openClawVoiceSystemPrompt should have a non-empty default"
+  );
+  assert.ok(
+    /markdown/i.test(config.openClawVoiceSystemPrompt),
+    "default voice prompt should mention markdown"
+  );
+});
+
+test("readOpenClawClientConfigFromEnv uses OPENCLAW_VOICE_SYSTEM_PROMPT when set", () => {
+  const config = readOpenClawClientConfigFromEnv({
+    OPENCLAW_URL: "http://127.0.0.1:3000/api/chat",
+    OPENCLAW_VOICE_SYSTEM_PROMPT: "Custom voice prompt"
+  });
+  assert.equal(config.openClawVoiceSystemPrompt, "Custom voice prompt");
+});
+
+test("queryViaLocalCli passes --system-prompt arg when openClawVoiceSystemPrompt is set", async () => {
+  const config = readOpenClawClientConfigFromEnv({
+    OPENCLAW_URL: "http://127.0.0.1:18789/v1/chat/completions",
+    OPENCLAW_CLI_FALLBACK_ENABLED: "true",
+    OPENCLAW_CLI_SESSION_ID: "voice-tests",
+    OPENCLAW_VOICE_SYSTEM_PROMPT: "Respond without markdown."
+  });
+
+  let capturedArgs;
+  const client = createOpenClawClient(config, {
+    fetchImpl: async () => ({
+      ok: false,
+      status: 403,
+      text: async () => "missing scope: operator.write",
+      headers: { get: () => "application/json" }
+    }),
+    execFileAsync: async (_bin, args) => {
+      capturedArgs = [...args];
+      return {
+        stdout: JSON.stringify({ response: "voice ok" }),
+        stderr: ""
+      };
+    }
+  });
+
+  const result = await client("what time is it", "office");
+  assert.equal(result, "voice ok");
+  assert.ok(
+    capturedArgs.includes("--system-prompt"),
+    `expected --system-prompt in CLI args, got: ${capturedArgs.join(" ")}`
+  );
+  const idx = capturedArgs.indexOf("--system-prompt");
+  assert.equal(capturedArgs[idx + 1], "Respond without markdown.");
+});
+
+test("queryViaLocalCli omits --system-prompt when openClawVoiceSystemPrompt is empty string", async () => {
+  const config = {
+    openClawUrl: "http://127.0.0.1:18789/v1/chat/completions",
+    openClawMethod: "POST",
+    openClawInputField: "input",
+    openClawOutputField: "response",
+    openClawAuthBearer: "",
+    openClawCliFallbackEnabled: true,
+    openClawCliBin: "openclaw",
+    openClawCliSessionId: "voice-tests",
+    openClawHttpSessionId: "voice-tests",
+    openClawCliAgent: "",
+    openClawCliTimeoutMs: 5000,
+    openClawVoiceSystemPrompt: ""
+  };
+
+  let capturedArgs;
+  const client = createOpenClawClient(config, {
+    fetchImpl: async () => ({
+      ok: false,
+      status: 403,
+      text: async () => "missing scope: operator.write",
+      headers: { get: () => "application/json" }
+    }),
+    execFileAsync: async (_bin, args) => {
+      capturedArgs = [...args];
+      return {
+        stdout: JSON.stringify({ response: "no prompt ok" }),
+        stderr: ""
+      };
+    }
+  });
+
+  await client("what time is it", "office");
+  assert.ok(
+    !capturedArgs.includes("--system-prompt"),
+    `expected no --system-prompt in CLI args, got: ${capturedArgs.join(" ")}`
+  );
+});
+
+// ---------------------------------------------------------------------------
+
 test("empty-response retry omits session even when OPENCLAW_HTTP_SESSION_ID is set", async () => {
   const config = readOpenClawClientConfigFromEnv({
     OPENCLAW_URL: "http://127.0.0.1:3000/api/chat",

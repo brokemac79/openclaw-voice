@@ -12,6 +12,7 @@ import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 
 import { createOpenClawClient, readOpenClawClientConfigFromEnv } from "./openclaw-client.js";
 import { stripMarkdown } from "./strip-markdown.js";
+import { createTranscriber, readSttConfigFromEnv } from "./stt.js";
 
 dotenv.config();
 
@@ -36,11 +37,8 @@ const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY || "";
 const elevenLabsVoiceId = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
 const elevenLabsModel = process.env.ELEVENLABS_MODEL || "eleven_monolingual_v1";
 const ttsFallbackProvider = (process.env.TTS_FALLBACK_PROVIDER || "piper").trim().toLowerCase();
-const fasterWhisperModel = process.env.FASTER_WHISPER_MODEL || "base.en";
-const fasterWhisperLanguage = process.env.FASTER_WHISPER_LANGUAGE || "en";
-const fasterWhisperDevice = process.env.FASTER_WHISPER_DEVICE || "auto";
-const fasterWhisperComputeType = process.env.FASTER_WHISPER_COMPUTE_TYPE || "int8";
-const fasterWhisperPythonBin = process.env.FASTER_WHISPER_PYTHON_BIN || "python3";
+const sttConfig = readSttConfigFromEnv(process.env);
+const transcribeAudio = createTranscriber(sttConfig);
 const sonosRelayUrl = process.env.SONOS_RELAY_URL || process.env.SONOS_RELAY_PI_URL || "";
 const sonosRelayFallbackUrl = process.env.SONOS_RELAY_FALLBACK_URL || "";
 const sonosRelayAuthBearer = process.env.SONOS_RELAY_AUTH_BEARER || "";
@@ -101,47 +99,6 @@ function requireBearer(req, res, next) {
   }
 
   next();
-}
-
-async function transcribeAudio(buffer, filename, contentType) {
-  const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "voice-"));
-  const safeFilename = path.basename(filename || "recording.bin");
-  const tmpPath = path.join(tmpDir, safeFilename);
-  const whisperScriptPath = path.join(__dirname, "..", "scripts", "faster_whisper_transcribe.py");
-
-  try {
-    await fs.promises.writeFile(tmpPath, buffer);
-
-    const args = [
-      whisperScriptPath,
-      "--audio-path",
-      tmpPath,
-      "--model",
-      fasterWhisperModel,
-      "--language",
-      fasterWhisperLanguage,
-      "--device",
-      fasterWhisperDevice,
-      "--compute-type",
-      fasterWhisperComputeType,
-      "--content-type",
-      contentType || "application/octet-stream"
-    ];
-
-    const { stdout, stderr } = await execFileAsync(fasterWhisperPythonBin, args, {
-      timeout: Number(process.env.FASTER_WHISPER_TIMEOUT_MS || 120000),
-      maxBuffer: 8 * 1024 * 1024
-    });
-
-    if (stderr?.trim()) {
-      process.stderr.write(`faster-whisper stderr: ${stderr}\n`);
-    }
-
-    const payload = JSON.parse(stdout);
-    return (payload.text || "").trim();
-  } finally {
-    await fs.promises.rm(tmpDir, { recursive: true, force: true });
-  }
 }
 
 async function sendAudioToSonosRelay(audioBuffer, text, roomName, audioMimeType = "audio/mpeg") {
@@ -345,7 +302,7 @@ async function synthesizeSpeech(text) {
   }
 
   if (preferred === "elevenlabs") {
-    return synthesizeSpeechWithElevenLabs(text);
+    return synthesizeSpeechWithElevenLabs(cleanText);
   }
 
   if (preferred === "edge") {
@@ -404,6 +361,7 @@ async function sendProactiveAlert(payload) {
 app.get("/health", (_req, res) => {
   res.json({
     ok: true,
+    sttProvider: sttConfig.sttProvider,
     ttsProvider,
     ttsFallbackProvider,
     sonosRelayConfigured: Boolean(sonosRelayUrl || sonosRelayFallbackUrl)
@@ -469,14 +427,24 @@ app.post("/api/voice/alerts", requireBearer, async (req, res) => {
 
 app.post("/api/voice/turn", requireBearer, upload.single("audio"), async (req, res) => {
   try {
-    if (!req.file?.buffer) {
-      res.status(400).json({ error: "Missing audio upload" });
-      return;
-    }
+    let transcribedText;
 
-    const uploadFilename = req.file.originalname || "recording.bin";
-    const uploadMimeType = resolveAudioContentType(req.file.mimetype, uploadFilename);
-    const transcribedText = await transcribeAudio(req.file.buffer, uploadFilename, uploadMimeType);
+    if (sttConfig.sttProvider === "browser") {
+      transcribedText = (req.body?.transcription || "").trim();
+      if (!transcribedText) {
+        res.status(400).json({ error: "Missing transcription field (STT_PROVIDER=browser expects client-side transcription)" });
+        return;
+      }
+    } else {
+      if (!req.file?.buffer) {
+        res.status(400).json({ error: "Missing audio upload" });
+        return;
+      }
+
+      const uploadFilename = req.file.originalname || "recording.bin";
+      const uploadMimeType = resolveAudioContentType(req.file.mimetype, uploadFilename);
+      transcribedText = await transcribeAudio(req.file.buffer, uploadFilename, uploadMimeType);
+    }
 
     if (!transcribedText) {
       res.status(422).json({ error: "Unable to transcribe audio" });
