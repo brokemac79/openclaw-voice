@@ -261,6 +261,24 @@ Try:
 
 If startup fails with `Missing VOICE_CLIENT_BEARER_TOKEN`, add `VOICE_CLIENT_BEARER_TOKEN` or reuse `VOICE_API_BEARER_TOKEN` in `.env`.
 
+### Surface/Windows: request sends but fails before reply
+
+Plain-English meaning: your desktop client recorded audio, but the server failed in one of the backend stages.
+
+What to do first:
+
+1. Copy the exact terminal error from the desktop client.
+2. Ask the server host/operator for the matching `voice_pipeline` log line from `openclaw-voice` service logs.
+3. Match the failure stage to the likely fix:
+
+- `validate_input`: malformed request body or missing transcription/audio
+- `transcribe_audio`: speech-to-text dependency issue on server
+- `query_openclaw`: upstream OpenClaw URL/token/session/fallback issue
+- `synthesize_tts`: text-to-speech dependency or credential issue
+- `route_sonos`: Sonos relay reachability/auth/room issue
+
+If the host sees `openclaw CLI rejected --system-prompt; retrying fallback command without that flag for compatibility.`, that message is expected compatibility behavior for older OpenClaw CLI versions.
+
 ## Related docs
 
 - Hosting and server setup: `docs/host-it-yourself.md`
