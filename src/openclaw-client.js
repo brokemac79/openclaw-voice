@@ -88,6 +88,29 @@ function createOneShotSessionId(baseSessionId) {
   return `${baseSessionId}-restart-${timestamp}-${random}`;
 }
 
+function buildLocalCliArgs({ sessionIdForTurn, text, openClawCliAgent, openClawVoiceSystemPrompt, includeSystemPrompt }) {
+  const args = ["agent", "--local", "--json", "--session-id", sessionIdForTurn, "--message", text];
+  if (openClawCliAgent) {
+    args.push("--agent", openClawCliAgent);
+  }
+  if (includeSystemPrompt && openClawVoiceSystemPrompt) {
+    args.push("--system-prompt", openClawVoiceSystemPrompt);
+  }
+  return args;
+}
+
+function isSystemPromptUnsupportedError(error) {
+  const message = [error?.message, error?.stderr, error?.stdout]
+    .filter(Boolean)
+    .join("\n")
+    .toLowerCase();
+  if (!message.includes("--system-prompt")) {
+    return false;
+  }
+
+  return /unknown\s+(option|flag)|unrecognized\s+(option|argument)|unexpected\s+argument|no\s+such\s+option/.test(message);
+}
+
 export function extractOpenClawText(json, outputField) {
   if (json && typeof json[outputField] === "string") {
     return json[outputField];
@@ -242,18 +265,41 @@ export function createOpenClawClient(config, deps = {}) {
       );
     }
 
-    const args = ["agent", "--local", "--json", "--session-id", sessionIdForTurn, "--message", text];
-    if (openClawCliAgent) {
-      args.push("--agent", openClawCliAgent);
-    }
-    if (openClawVoiceSystemPrompt) {
-      args.push("--system-prompt", openClawVoiceSystemPrompt);
-    }
+    const execLocalCli = async (args) =>
+      execFileAsync(openClawCliBin, args, {
+        timeout: openClawCliTimeoutMs,
+        maxBuffer: 4 * 1024 * 1024
+      });
 
-    const { stdout, stderr } = await execFileAsync(openClawCliBin, args, {
-      timeout: openClawCliTimeoutMs,
-      maxBuffer: 4 * 1024 * 1024
+    const args = buildLocalCliArgs({
+      sessionIdForTurn,
+      text,
+      openClawCliAgent,
+      openClawVoiceSystemPrompt,
+      includeSystemPrompt: true
     });
+
+    let stdout;
+    let stderr;
+    try {
+      ({ stdout, stderr } = await execLocalCli(args));
+    } catch (error) {
+      if (openClawVoiceSystemPrompt && isSystemPromptUnsupportedError(error)) {
+        process.stderr.write(
+          "openclaw CLI rejected --system-prompt; retrying fallback command without that flag for compatibility.\n"
+        );
+        const retryArgs = buildLocalCliArgs({
+          sessionIdForTurn,
+          text,
+          openClawCliAgent,
+          openClawVoiceSystemPrompt,
+          includeSystemPrompt: false
+        });
+        ({ stdout, stderr } = await execLocalCli(retryArgs));
+      } else {
+        throw error;
+      }
+    }
 
     if (stderr?.trim()) {
       process.stderr.write(`openclaw CLI stderr: ${stderr}\n`);
