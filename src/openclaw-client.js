@@ -104,11 +104,11 @@ function isSystemPromptUnsupportedError(error) {
     .filter(Boolean)
     .join("\n")
     .toLowerCase();
-  if (!message.includes("--system-prompt")) {
+  if (!/(?:--?system-prompt|system\s+prompt)/.test(message)) {
     return false;
   }
 
-  return /unknown\s+(option|flag)|unrecognized\s+(option|argument)|unexpected\s+argument|no\s+such\s+option/.test(message);
+  return /unknown\s+(option|flag|argument)|unrecognized\s+(option|argument)|unexpected\s+argument|no\s+such\s+option|unsupported\s+(option|flag|argument)|invalid\s+(option|flag|argument)|does\s+not\s+support/.test(message);
 }
 
 export function extractOpenClawText(json, outputField) {

@@ -447,6 +447,43 @@ test("queryViaLocalCli retries without --system-prompt when CLI does not support
   assert.ok(!seenArgs[1].includes("--system-prompt"));
 });
 
+test("queryViaLocalCli retries when CLI reports unsupported system prompt without dashed flag text", async () => {
+  const config = readOpenClawClientConfigFromEnv({
+    OPENCLAW_URL: "http://127.0.0.1:18789/v1/chat/completions",
+    OPENCLAW_CLI_FALLBACK_ENABLED: "true",
+    OPENCLAW_CLI_SESSION_ID: "voice-tests",
+    OPENCLAW_VOICE_SYSTEM_PROMPT: "Respond without markdown."
+  });
+
+  const seenArgs = [];
+  const client = createOpenClawClient(config, {
+    fetchImpl: async () => ({
+      ok: false,
+      status: 403,
+      text: async () => "missing scope: operator.write",
+      headers: { get: () => "application/json" }
+    }),
+    execFileAsync: async (_bin, args) => {
+      seenArgs.push([...args]);
+      if (seenArgs.length === 1) {
+        const error = new Error("unsupported argument: system prompt");
+        throw error;
+      }
+
+      return {
+        stdout: JSON.stringify({ response: "compat ok" }),
+        stderr: ""
+      };
+    }
+  });
+
+  const result = await client("what time is it", "office");
+  assert.equal(result, "compat ok");
+  assert.equal(seenArgs.length, 2);
+  assert.ok(seenArgs[0].includes("--system-prompt"));
+  assert.ok(!seenArgs[1].includes("--system-prompt"));
+});
+
 // ---------------------------------------------------------------------------
 
 test("empty-response retry omits session even when OPENCLAW_HTTP_SESSION_ID is set", async () => {
