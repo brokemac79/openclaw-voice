@@ -99,13 +99,20 @@ function buildLocalCliArgs({ sessionIdForTurn, text, openClawCliAgent, openClawV
   return args;
 }
 
+function normalizeCliMessage(message) {
+  return String(message || "")
+    .toLowerCase()
+    .replace(/\u001b\[[0-9;]*m/g, "")
+    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-");
+}
+
 function isSystemPromptUnsupportedText(message) {
-  const normalized = String(message || "").toLowerCase();
+  const normalized = normalizeCliMessage(message);
   if (!/(?:--?system-prompt|system\s+prompt)/.test(normalized)) {
     return false;
   }
 
-  return /unknown\s+(option|flag|argument)|unrecognized\s+(option|argument)|unexpected\s+argument|no\s+such\s+option|unsupported\s+(option|flag|argument)|invalid\s+(option|flag|argument)|does\s+not\s+support/.test(normalized);
+  return /unknown\s+(option|flag|argument)|unrecognized\s+(option|argument)|unexpected\s+argument|found\s+argument|wasn['’]?t\s+expected|isn['’]?t\s+valid|no\s+such\s+option|unsupported\s+(option|flag|argument)|invalid\s+(option|flag|argument)|does\s+not\s+support/.test(normalized);
 }
 
 function isSystemPromptUnsupportedError(error) {
