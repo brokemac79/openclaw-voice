@@ -99,16 +99,24 @@ function buildLocalCliArgs({ sessionIdForTurn, text, openClawCliAgent, openClawV
   return args;
 }
 
-function isSystemPromptUnsupportedError(error) {
-  const message = [error?.message, error?.stderr, error?.stdout]
-    .filter(Boolean)
-    .join("\n")
-    .toLowerCase();
-  if (!/(?:--?system-prompt|system\s+prompt)/.test(message)) {
+function isSystemPromptUnsupportedText(message) {
+  const normalized = String(message || "").toLowerCase();
+  if (!/(?:--?system-prompt|system\s+prompt)/.test(normalized)) {
     return false;
   }
 
-  return /unknown\s+(option|flag|argument)|unrecognized\s+(option|argument)|unexpected\s+argument|no\s+such\s+option|unsupported\s+(option|flag|argument)|invalid\s+(option|flag|argument)|does\s+not\s+support/.test(message);
+  return /unknown\s+(option|flag|argument)|unrecognized\s+(option|argument)|unexpected\s+argument|no\s+such\s+option|unsupported\s+(option|flag|argument)|invalid\s+(option|flag|argument)|does\s+not\s+support/.test(normalized);
+}
+
+function isSystemPromptUnsupportedError(error) {
+  const message = [error?.message, error?.stderr, error?.stdout]
+    .filter(Boolean)
+    .join("\n");
+  return isSystemPromptUnsupportedText(message);
+}
+
+function isSystemPromptUnsupportedOutput(stdout, stderr) {
+  return isSystemPromptUnsupportedText([stdout, stderr].filter(Boolean).join("\n"));
 }
 
 export function extractOpenClawText(json, outputField) {
@@ -281,8 +289,23 @@ export function createOpenClawClient(config, deps = {}) {
 
     let stdout;
     let stderr;
+    let ranCompatibilityRetry = false;
     try {
       ({ stdout, stderr } = await execLocalCli(args));
+      if (openClawVoiceSystemPrompt && isSystemPromptUnsupportedOutput(stdout, stderr)) {
+        process.stderr.write(
+          "openclaw CLI reported unsupported system-prompt in output; retrying fallback command without that flag for compatibility.\n"
+        );
+        const retryArgs = buildLocalCliArgs({
+          sessionIdForTurn,
+          text,
+          openClawCliAgent,
+          openClawVoiceSystemPrompt,
+          includeSystemPrompt: false
+        });
+        ({ stdout, stderr } = await execLocalCli(retryArgs));
+        ranCompatibilityRetry = true;
+      }
     } catch (error) {
       if (openClawVoiceSystemPrompt && isSystemPromptUnsupportedError(error)) {
         process.stderr.write(
@@ -296,9 +319,16 @@ export function createOpenClawClient(config, deps = {}) {
           includeSystemPrompt: false
         });
         ({ stdout, stderr } = await execLocalCli(retryArgs));
+        ranCompatibilityRetry = true;
       } else {
         throw error;
       }
+    }
+
+    if (!ranCompatibilityRetry && openClawVoiceSystemPrompt && isSystemPromptUnsupportedOutput(stdout, stderr)) {
+      throw new Error(
+        "OpenClaw CLI output still indicates unsupported --system-prompt after fallback command execution."
+      );
     }
 
     if (stderr?.trim()) {
