@@ -100,7 +100,7 @@ If you also want Sonos playback from this VPS deployment, add:
 - `SONOS_RELAY_URL=http://<relay-host>:<port>/<path>`
 - `SONOS_RELAY_AUTH_BEARER=<token>` (only if your relay requires auth)
 - `SONOS_RELAY_FALLBACK_URL=http://<backup-relay>:<port>/<path>` (optional)
-- `SONOS_RELAY_TIMEOUT_MS=12000` (recommended starting point)
+- `SONOS_RELAY_TIMEOUT_MS=30000` (recommended starting point)
 - `SONOS_ROOM_DEFAULT=<Exact Sonos room name>` (optional but useful)
 
 Why this matters: `systemd` does not activate your shell profile, so a plain `python3` may resolve to an interpreter that does not have `faster-whisper` installed.

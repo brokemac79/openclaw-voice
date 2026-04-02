@@ -472,13 +472,22 @@ async function runVoiceTurn(triggerSource) {
   }
 }
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
-
 process.stdout.write("OpenClaw desktop voice client started.\n");
-process.stdout.write("Press Enter for manual fallback recording, or type q then Enter to quit.\n");
+
+const hasInteractiveStdin = Boolean(process.stdin?.isTTY);
+const interactiveEnabled = hasInteractiveStdin && wakeMode !== "ambient";
+const rl = interactiveEnabled
+  ? readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    })
+  : null;
+
+if (rl) {
+  process.stdout.write("Press Enter for manual fallback recording, or type q then Enter to quit.\n");
+} else {
+  process.stdout.write("No interactive stdin detected; running in background trigger mode only.\n");
+}
 
 if (ambientModeEnabled) {
   process.stdout.write(
@@ -501,7 +510,7 @@ if (wakeMode !== "manual" && wakeMode !== "ambient") {
     );
     if (wakeMode === "wake-word") {
       process.stderr.write("Wake mode is strict wake-word. Exiting because setup failed.\n");
-      rl.close();
+      rl?.close();
       process.exitCode = 1;
       process.exit();
     }
@@ -523,7 +532,7 @@ if (wakeMode !== "manual" && wakeMode !== "ambient") {
     );
     if (wakeMode === "hotkey") {
       process.stderr.write("Wake mode is strict hotkey. Exiting because setup failed.\n");
-      rl.close();
+      rl?.close();
       process.exitCode = 1;
       process.exit();
     }
@@ -563,13 +572,37 @@ function stopAmbientLoop() {
 
 startAmbientLoop();
 
-for await (const line of rl) {
-  const cmd = line.trim().toLowerCase();
-  if (cmd === "q" || cmd === "quit" || cmd === "exit") {
-    break;
-  }
+let shouldShutdown = false;
+let resolveShutdownSignal;
+const shutdownSignal = new Promise((resolve) => {
+  resolveShutdownSignal = resolve;
+});
 
-  await runVoiceTurn("manual-enter");
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.once(signal, () => {
+    shouldShutdown = true;
+    rl?.close();
+    resolveShutdownSignal();
+  });
+}
+
+if (wakeMode === "manual" && !rl) {
+  process.stderr.write("Wake mode 'manual' requires an interactive console (stdin TTY).\n");
+  shouldShutdown = true;
+  process.exitCode = 1;
+}
+
+if (rl && !shouldShutdown) {
+  for await (const line of rl) {
+    const cmd = line.trim().toLowerCase();
+    if (cmd === "q" || cmd === "quit" || cmd === "exit") {
+      break;
+    }
+
+    await runVoiceTurn("manual-enter");
+  }
+} else if (!shouldShutdown) {
+  await shutdownSignal;
 }
 
 for (const cleanup of cleanupFns) {
@@ -582,4 +615,4 @@ for (const cleanup of cleanupFns) {
 
 stopAmbientLoop();
 
-rl.close();
+rl?.close();

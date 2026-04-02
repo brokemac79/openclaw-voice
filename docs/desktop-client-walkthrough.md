@@ -110,6 +110,21 @@ VOICE_CLIENT_PLAY_COMMAND=powershell -NoProfile -NonInteractive -WindowStyle Hid
 
 On Windows, you can also leave `VOICE_CLIENT_PLAY_COMMAND` unset. The desktop client defaults to a hidden playback command and auto-rewrites legacy `Start-Process` values.
 
+### Windows background startup reliability
+
+If you launch the desktop client from a hidden/background session, prefer wake-word or ambient triggers instead of Enter-to-record.
+
+Recommended `.env` baseline for background startup:
+
+```dotenv
+VOICE_CLIENT_WAKE_MODE=auto
+VOICE_CLIENT_WAKE_WORD_ENABLED=true
+VOICE_CLIENT_HOTKEY_ENABLED=false
+VOICE_CLIENT_AMBIENT_MODE=false
+```
+
+Why: hidden sessions can have inconsistent keyboard/stdin behavior, while wake-word flow does not depend on interactive terminal input.
+
 If you want wake word support, choose a provider first:
 
 ### Option A — OpenWakeWord (free, no account required)

@@ -76,6 +76,18 @@ Or with the npm script:
 npm run sonos:relay
 ```
 
+### Windows host reliability
+
+If your relay host is Windows, run the relay as a managed service wrapper (for example NSSM) instead of only relying on a user logon task.
+
+Recommended behavior:
+
+- start automatically at boot
+- restart on failure
+- run with the same `.env` values each time
+
+This avoids the common "works after login but later goes offline" relay pattern.
+
 ## systemd setup
 
 Copy the unit file and enable it:
