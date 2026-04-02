@@ -42,6 +42,24 @@ test("extractOpenClawText supports /v1-like payloads", () => {
   );
 });
 
+test("extractOpenClawText supports OpenAI chat-completions response shape", () => {
+  assert.equal(
+    extractOpenClawText(
+      {
+        choices: [
+          {
+            message: {
+              content: "hello from choices"
+            }
+          }
+        ]
+      },
+      "response"
+    ),
+    "hello from choices"
+  );
+});
+
 test("extractOpenClawText supports payload content arrays and empty payload envelopes", () => {
   assert.equal(
     extractOpenClawText(
@@ -99,6 +117,38 @@ test("queryOpenClaw falls back to local CLI on /v1 403 scope failure", async () 
 
   const result = await client("ping", "office");
   assert.equal(result, "fallback ok");
+});
+
+test("queryOpenClaw uses OpenAI chat-completions request shape for /v1/chat/completions", async () => {
+  const config = readOpenClawClientConfigFromEnv({
+    OPENCLAW_URL: "http://127.0.0.1:18789/v1/chat/completions",
+    OPENCLAW_METHOD: "POST",
+    OPENCLAW_INPUT_FIELD: "input",
+    OPENCLAW_OUTPUT_FIELD: "response"
+  });
+
+  const seenBodies = [];
+  const client = createOpenClawClient(config, {
+    fetchImpl: async (_url, options) => {
+      seenBodies.push(JSON.parse(options.body));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: "chat ok" } }]
+        }),
+        text: async () => "",
+        headers: { get: () => "application/json" }
+      };
+    }
+  });
+
+  const result = await client("ping", "office");
+  assert.equal(result, "chat ok");
+  assert.deepEqual(seenBodies[0], {
+    messages: [{ role: "user", content: "ping" }],
+    sessionId: "office"
+  });
 });
 
 test("queryOpenClaw parses fallback JSON from stderr when stdout is empty", async () => {

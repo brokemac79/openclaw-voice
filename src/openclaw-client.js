@@ -30,6 +30,19 @@ function isV1HttpEndpoint(url) {
   }
 }
 
+function isChatCompletionsEndpoint(url) {
+  if (typeof url !== "string" || url.trim().length === 0) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(url);
+    return parsed.pathname === "/v1/chat/completions";
+  } catch {
+    return false;
+  }
+}
+
 function parsePossibleJson(output) {
   const trimmed = String(output || "").trim();
   if (!trimmed) {
@@ -127,6 +140,35 @@ function isSystemPromptUnsupportedOutput(stdout, stderr) {
 }
 
 export function extractOpenClawText(json, outputField) {
+  const extractTextFromContent = (content) => {
+    if (typeof content === "string") {
+      return content;
+    }
+
+    if (Array.isArray(content)) {
+      return content
+        .map((part) => {
+          if (typeof part === "string") {
+            return part;
+          }
+
+          if (typeof part?.text === "string") {
+            return part.text;
+          }
+
+          if (typeof part?.content === "string") {
+            return part.content;
+          }
+
+          return "";
+        })
+        .join(" ")
+        .trim();
+    }
+
+    return "";
+  };
+
   if (json && typeof json[outputField] === "string") {
     return json[outputField];
   }
@@ -147,23 +189,7 @@ export function extractOpenClawText(json, outputField) {
         }
 
         if (Array.isArray(payload?.content)) {
-          return payload.content
-            .map((part) => {
-              if (typeof part === "string") {
-                return part;
-              }
-
-              if (typeof part?.text === "string") {
-                return part.text;
-              }
-
-              if (typeof part?.content === "string") {
-                return part.content;
-              }
-
-              return "";
-            })
-            .join(" ");
+          return extractTextFromContent(payload.content);
         }
 
         return "";
@@ -171,6 +197,29 @@ export function extractOpenClawText(json, outputField) {
       .find((text) => text.trim().length > 0);
     if (payloadText) {
       return payloadText;
+    }
+
+    return "";
+  }
+
+  if (Array.isArray(json?.choices)) {
+    const choiceText = json.choices
+      .map((choice) => {
+        if (typeof choice?.text === "string") {
+          return choice.text;
+        }
+
+        const messageText = extractTextFromContent(choice?.message?.content);
+        if (messageText) {
+          return messageText;
+        }
+
+        return "";
+      })
+      .find((text) => text.trim().length > 0);
+
+    if (choiceText) {
+      return choiceText;
     }
 
     return "";
@@ -216,10 +265,15 @@ export function createOpenClawClient(config, deps = {}) {
 
   async function queryViaHttp(text, sessionId, { omitDefaultSession = false } = {}) {
     const resolvedSessionId = omitDefaultSession ? (sessionId || undefined) : (sessionId || openClawHttpSessionId || undefined);
-    const payload = {
-      [openClawInputField]: text,
-      sessionId: resolvedSessionId
-    };
+    const payload = isChatCompletionsEndpoint(openClawUrl)
+      ? {
+          messages: [{ role: "user", content: text }],
+          sessionId: resolvedSessionId
+        }
+      : {
+          [openClawInputField]: text,
+          sessionId: resolvedSessionId
+        };
 
     const headers = {
       "Content-Type": "application/json"
