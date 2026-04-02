@@ -30,6 +30,19 @@ function isV1HttpEndpoint(url) {
   }
 }
 
+function isChatCompletionsEndpoint(url) {
+  if (typeof url !== "string" || url.trim().length === 0) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(url);
+    return parsed.pathname === "/v1/chat/completions";
+  } catch {
+    return false;
+  }
+}
+
 function parsePossibleJson(output) {
   const trimmed = String(output || "").trim();
   if (!trimmed) {
@@ -99,19 +112,63 @@ function buildLocalCliArgs({ sessionIdForTurn, text, openClawCliAgent, openClawV
   return args;
 }
 
-function isSystemPromptUnsupportedError(error) {
-  const message = [error?.message, error?.stderr, error?.stdout]
-    .filter(Boolean)
-    .join("\n")
-    .toLowerCase();
-  if (!/(?:--?system-prompt|system\s+prompt)/.test(message)) {
+function normalizeCliMessage(message) {
+  return String(message || "")
+    .toLowerCase()
+    .replace(/\u001b\[[0-9;]*m/g, "")
+    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-");
+}
+
+function isSystemPromptUnsupportedText(message) {
+  const normalized = normalizeCliMessage(message);
+  if (!/(?:--?system-prompt|system\s+prompt)/.test(normalized)) {
     return false;
   }
 
-  return /unknown\s+(option|flag|argument)|unrecognized\s+(option|argument)|unexpected\s+argument|no\s+such\s+option|unsupported\s+(option|flag|argument)|invalid\s+(option|flag|argument)|does\s+not\s+support/.test(message);
+  return /unknown\s+(option|flag|argument)|unrecognized\s+(option|argument)|unexpected\s+argument|found\s+argument|wasn['’]?t\s+expected|isn['’]?t\s+valid|no\s+such\s+option|unsupported\s+(option|flag|argument)|invalid\s+(option|flag|argument)|does\s+not\s+support/.test(normalized);
+}
+
+function isSystemPromptUnsupportedError(error) {
+  const message = [error?.message, error?.stderr, error?.stdout]
+    .filter(Boolean)
+    .join("\n");
+  return isSystemPromptUnsupportedText(message);
+}
+
+function isSystemPromptUnsupportedOutput(stdout, stderr) {
+  return isSystemPromptUnsupportedText([stdout, stderr].filter(Boolean).join("\n"));
 }
 
 export function extractOpenClawText(json, outputField) {
+  const extractTextFromContent = (content) => {
+    if (typeof content === "string") {
+      return content;
+    }
+
+    if (Array.isArray(content)) {
+      return content
+        .map((part) => {
+          if (typeof part === "string") {
+            return part;
+          }
+
+          if (typeof part?.text === "string") {
+            return part.text;
+          }
+
+          if (typeof part?.content === "string") {
+            return part.content;
+          }
+
+          return "";
+        })
+        .join(" ")
+        .trim();
+    }
+
+    return "";
+  };
+
   if (json && typeof json[outputField] === "string") {
     return json[outputField];
   }
@@ -132,23 +189,7 @@ export function extractOpenClawText(json, outputField) {
         }
 
         if (Array.isArray(payload?.content)) {
-          return payload.content
-            .map((part) => {
-              if (typeof part === "string") {
-                return part;
-              }
-
-              if (typeof part?.text === "string") {
-                return part.text;
-              }
-
-              if (typeof part?.content === "string") {
-                return part.content;
-              }
-
-              return "";
-            })
-            .join(" ");
+          return extractTextFromContent(payload.content);
         }
 
         return "";
@@ -156,6 +197,29 @@ export function extractOpenClawText(json, outputField) {
       .find((text) => text.trim().length > 0);
     if (payloadText) {
       return payloadText;
+    }
+
+    return "";
+  }
+
+  if (Array.isArray(json?.choices)) {
+    const choiceText = json.choices
+      .map((choice) => {
+        if (typeof choice?.text === "string") {
+          return choice.text;
+        }
+
+        const messageText = extractTextFromContent(choice?.message?.content);
+        if (messageText) {
+          return messageText;
+        }
+
+        return "";
+      })
+      .find((text) => text.trim().length > 0);
+
+    if (choiceText) {
+      return choiceText;
     }
 
     return "";
@@ -201,10 +265,15 @@ export function createOpenClawClient(config, deps = {}) {
 
   async function queryViaHttp(text, sessionId, { omitDefaultSession = false } = {}) {
     const resolvedSessionId = omitDefaultSession ? (sessionId || undefined) : (sessionId || openClawHttpSessionId || undefined);
-    const payload = {
-      [openClawInputField]: text,
-      sessionId: resolvedSessionId
-    };
+    const payload = isChatCompletionsEndpoint(openClawUrl)
+      ? {
+          messages: [{ role: "user", content: text }],
+          sessionId: resolvedSessionId
+        }
+      : {
+          [openClawInputField]: text,
+          sessionId: resolvedSessionId
+        };
 
     const headers = {
       "Content-Type": "application/json"
@@ -281,8 +350,23 @@ export function createOpenClawClient(config, deps = {}) {
 
     let stdout;
     let stderr;
+    let ranCompatibilityRetry = false;
     try {
       ({ stdout, stderr } = await execLocalCli(args));
+      if (openClawVoiceSystemPrompt && isSystemPromptUnsupportedOutput(stdout, stderr)) {
+        process.stderr.write(
+          "openclaw CLI reported unsupported system-prompt in output; retrying fallback command without that flag for compatibility.\n"
+        );
+        const retryArgs = buildLocalCliArgs({
+          sessionIdForTurn,
+          text,
+          openClawCliAgent,
+          openClawVoiceSystemPrompt,
+          includeSystemPrompt: false
+        });
+        ({ stdout, stderr } = await execLocalCli(retryArgs));
+        ranCompatibilityRetry = true;
+      }
     } catch (error) {
       if (openClawVoiceSystemPrompt && isSystemPromptUnsupportedError(error)) {
         process.stderr.write(
@@ -296,9 +380,16 @@ export function createOpenClawClient(config, deps = {}) {
           includeSystemPrompt: false
         });
         ({ stdout, stderr } = await execLocalCli(retryArgs));
+        ranCompatibilityRetry = true;
       } else {
         throw error;
       }
+    }
+
+    if (!ranCompatibilityRetry && openClawVoiceSystemPrompt && isSystemPromptUnsupportedOutput(stdout, stderr)) {
+      throw new Error(
+        "OpenClaw CLI output still indicates unsupported --system-prompt after fallback command execution."
+      );
     }
 
     if (stderr?.trim()) {
