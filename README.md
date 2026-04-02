@@ -598,7 +598,7 @@ Important: Sonos playback is optional and needs a separate relay service running
 1. Keep `SONOS_RELAY_URL` pointed at the current primary relay, or set `SONOS_RELAY_PI_URL` if you want a clearer LAN/Pi-specific alias.
 2. Set `SONOS_RELAY_FALLBACK_URL` to the secondary relay that should receive traffic if the primary fails.
 3. Set `SONOS_RELAY_AUTH_BEARER` if your relay requires bearer auth.
-4. Adjust `SONOS_RELAY_TIMEOUT_MS` to control how long each relay attempt can take before failover.
+4. Adjust `SONOS_RELAY_TIMEOUT_MS` to control how long each relay attempt can take before failover (default `30000`).
 5. Verify both endpoints with `GET /api/sonos/relay/health` before moving production traffic.
 
 Relay implementation guidance:
@@ -723,8 +723,8 @@ Use these only when you run an external Sonos relay service:
 
 TTS provider options:
 
-- `TTS_PROVIDER` (`edge`, `piper`, `auto`)
-- `TTS_FALLBACK_PROVIDER` (`piper` supported fallback for `edge`)
+- `TTS_PROVIDER` (`edge`, `piper`, `elevenlabs`, `auto`)
+- `TTS_FALLBACK_PROVIDER` (`edge` or `piper` fallback for `edge`/`elevenlabs`)
 - `PIPER_BIN` (default `piper`)
 - `PIPER_MODEL_PATH` (required when using Piper)
 - `PIPER_SPEAKER_ID`
@@ -779,6 +779,7 @@ Expected relay behavior:
 
 - accept local LAN POST requests
 - play supplied MP3 audio on the specified Sonos room
+- when a room is currently playing TV/line-in/other media, snapshot prior state and restore it after the spoken clip
 - return JSON status
 
 ## API contract

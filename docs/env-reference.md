@@ -149,7 +149,7 @@ Skip this section unless you want cloud transcription via Azure Cognitive Servic
 | Variable | What it is | Example value | Needed for | Where to get it |
 | --- | --- | --- | --- | --- |
 | `TTS_PROVIDER` | Which text-to-speech engine to use first | `edge` | Spoken replies | Choose `edge`, `piper`, `elevenlabs`, or `auto` |
-| `TTS_FALLBACK_PROVIDER` | Backup TTS provider if the main one fails | `piper` | Edge with Piper fallback | Usually leave `piper` if you install Piper |
+| `TTS_FALLBACK_PROVIDER` | Backup TTS provider if the main one fails (`edge` or `piper`) | `piper` | Edge or ElevenLabs fallback | Usually leave `piper` if you install Piper |
 
 ## ElevenLabs TTS (advanced / optional)
 
@@ -159,7 +159,7 @@ Skip this section unless you want cloud-based ElevenLabs speech output.
 | --- | --- | --- | --- | --- |
 | `ELEVENLABS_API_KEY` | Your ElevenLabs API key | `sk_abc123...` | ElevenLabs output | [ElevenLabs dashboard](https://elevenlabs.io) |
 | `ELEVENLABS_VOICE_ID` | Voice to use for synthesis | `21m00Tcm4TlvDq8ikWAM` | ElevenLabs output | ElevenLabs voice library (default is "Rachel") |
-| `ELEVENLABS_MODEL` | Model ID for synthesis | `eleven_monolingual_v1` | ElevenLabs output | ElevenLabs docs — use `eleven_multilingual_v2` for non-English |
+| `ELEVENLABS_MODEL` | Model ID for synthesis | `eleven_multilingual_v2` | ElevenLabs output | ElevenLabs docs — recommended default that works across languages |
 
 ## Piper TTS (advanced / optional)
 
@@ -185,7 +185,7 @@ Skip this section unless you want Sonos playback.
 | `SONOS_RELAY_PI_URL` | Alias for the primary LAN or Raspberry Pi relay | `http://192.168.1.60:5005/play-audio` | Sonos playback | Your local Sonos relay service |
 | `SONOS_RELAY_FALLBACK_URL` | Secondary relay used if the primary fails | `http://192.168.1.61:5005/play-audio` | Sonos failover | Your backup relay service |
 | `SONOS_RELAY_AUTH_BEARER` | Optional auth token for the relay | `replace-with-relay-token-if-needed` | Protected Sonos relay | Your relay auth config |
-| `SONOS_RELAY_TIMEOUT_MS` | Timeout per relay attempt | `12000` | Sonos playback | Choose how long to wait before failover |
+| `SONOS_RELAY_TIMEOUT_MS` | Timeout per relay attempt | `30000` | Sonos playback | Choose how long to wait before failover |
 | `SONOS_ROOM_DEFAULT` | Default Sonos room when the request does not specify one | `Kitchen` | Sonos playback | Exact room name from your Sonos setup |
 | `SONOS_VPS_RELAY_PORT` | Port used by the in-repo Sonos relay service (`npm run sonos:relay`) | `8788` | In-repo relay deployment | Pick an open port on the relay host |
 | `SONOS_VPS_RELAY_PATH` | HTTP path that accepts voice-server relay payloads | `/play` | In-repo relay deployment | Keep default unless you need a custom route |
@@ -195,6 +195,8 @@ Skip this section unless you want Sonos playback.
 | `SONOS_RELAY_PUBLIC_BASE_URL` | Public/reachable base URL that Sonos uses to fetch temp audio clips from the relay | `http://192.168.1.50:8788` | In-repo relay deployment | Use an address reachable from Sonos speakers |
 | `SONOS_RELAY_MEDIA_TTL_MS` | How long temp relay audio files stay available before cleanup | `900000` | In-repo relay deployment | Usually keep 10 to 20 minutes |
 | `SONOS_RELAY_MAX_AUDIO_BYTES` | Max accepted payload size for relay audio uploads | `15728640` | In-repo relay deployment | Tune based on expected clip size |
+| `SONOS_RELAY_RESTORE_POLL_INTERVAL_MS` | Poll interval while waiting for spoken clip playback to finish before restore | `500` | In-repo relay deployment | Lower for quicker restore detection; higher for fewer SOAP calls |
+| `SONOS_RELAY_RESTORE_TIMEOUT_MS` | Maximum wait window before restoring prior source/volume regardless | `20000` | In-repo relay deployment | Set above your longest expected spoken reply |
 
 ## Desktop client
 

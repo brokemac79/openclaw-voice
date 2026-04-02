@@ -8,9 +8,10 @@ UPnP/AVTransport API.
 
 1. The voice server synthesises a TTS audio clip and POSTs it (base64-encoded) to this relay.
 2. The relay writes the clip to a temporary file and serves it over a short-lived HTTP URL.
-3. The relay calls the Sonos UPnP `SetAVTransportURI` + `Play` actions, pointing the speaker
-   at that URL.
-4. After `SONOS_RELAY_CLIP_TTL_MS` milliseconds the file is deleted automatically.
+3. The relay snapshots current Sonos transport URI/state and volume.
+4. The relay calls Sonos UPnP `SetAVTransportURI` + `Play`, pointing the speaker at the clip URL.
+5. After the clip finishes (or a timeout window), the relay restores prior source + playback state + volume.
+6. After `SONOS_RELAY_CLIP_TTL_MS` milliseconds the file is deleted automatically.
 
 ## Prerequisites
 
@@ -63,6 +64,8 @@ Both the Private network profile **and** the firewall rule are required. Either 
 | `SONOS_RELAY_PORT` | `8788` | Port this relay server listens on |
 | `SONOS_PORT` | `1400` | Sonos UPnP port |
 | `SONOS_RELAY_CLIP_TTL_MS` | `30000` | Milliseconds to keep the audio clip file before deleting it |
+| `SONOS_RELAY_RESTORE_POLL_INTERVAL_MS` | `500` | Milliseconds between Sonos transport-state polls while waiting for clip end |
+| `SONOS_RELAY_RESTORE_TIMEOUT_MS` | `20000` | Max milliseconds to wait for clip completion before forcing restore |
 
 ## Starting the relay
 
@@ -75,6 +78,18 @@ Or with the npm script:
 ```bash
 npm run sonos:relay
 ```
+
+### Windows host reliability
+
+If your relay host is Windows, run the relay as a managed service wrapper (for example NSSM) instead of only relying on a user logon task.
+
+Recommended behavior:
+
+- start automatically at boot
+- restart on failure
+- run with the same `.env` values each time
+
+This avoids the common "works after login but later goes offline" relay pattern.
 
 ## systemd setup
 
@@ -116,6 +131,6 @@ curl http://localhost:8788/health
 | Symptom | Check |
 |---|---|
 | `missing required env vars` on startup | Verify all three required vars are in `.env` |
-| `Sonos SOAP SetAVTransportURI failed (500)` | Confirm `SONOS_IP` and VPS → Sonos network path |
+| `Sonos SOAP AVTransport.SetAVTransportURI failed (500)` | Confirm `SONOS_IP` and VPS → Sonos network path |
 | Sonos does not play | Verify the Sonos speaker can reach `SONOS_RELAY_VPS_URL` — check `SONOS_RELAY_VPS_URL` is set to the correct VPS address from the Sonos device's perspective |
 | `Clip not found or expired` errors in logs | Increase `SONOS_RELAY_CLIP_TTL_MS` if Sonos is slow to fetch the clip |

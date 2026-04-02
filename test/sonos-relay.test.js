@@ -5,7 +5,8 @@ import {
   buildSoapEnvelope,
   escapeXml,
   setSonosUri,
-  playSonos
+  playSonos,
+  playClipWithRestore
 } from "../src/sonos-relay-lib.js";
 
 test("escapeXml handles all special characters", () => {
@@ -86,7 +87,7 @@ test("setSonosUri rejects when Sonos returns non-2xx status", async () => {
         audioMimeType: "audio/mpeg",
         fetchImpl: mockFetch
       }),
-    /Sonos SOAP SetAVTransportURI failed \(500\)/
+    /Sonos SOAP AVTransport\.SetAVTransportURI failed \(500\)/
   );
 });
 
@@ -108,5 +109,84 @@ test("setSonosUri escapes special chars in audio URL", async () => {
   assert.ok(
     calls[0].opts.body.includes("&amp;"),
     "URL ampersand should be XML-escaped in SOAP body"
+  );
+});
+
+test("playClipWithRestore restores prior source, play state, and volume", async () => {
+  const clipUrl = "http://10.0.0.1:8788/clips/test.mp3";
+  const expected = [
+    {
+      service: "AVTransport",
+      action: "GetMediaInfo",
+      xml: "<CurrentURI>x-sonos-htastream:RINCON_TEST:spdif</CurrentURI><CurrentURIMetaData>&lt;meta&gt;tv&lt;/meta&gt;</CurrentURIMetaData>"
+    },
+    {
+      service: "AVTransport",
+      action: "GetTransportInfo",
+      xml: "<CurrentTransportState>PLAYING</CurrentTransportState><CurrentTransportStatus>OK</CurrentTransportStatus><CurrentSpeed>1</CurrentSpeed>"
+    },
+    {
+      service: "RenderingControl",
+      action: "GetVolume",
+      xml: "<CurrentVolume>18</CurrentVolume>"
+    },
+    { service: "AVTransport", action: "SetAVTransportURI", xml: "" },
+    { service: "AVTransport", action: "Play", xml: "" },
+    {
+      service: "AVTransport",
+      action: "GetMediaInfo",
+      xml: `<CurrentURI>${clipUrl}</CurrentURI><CurrentURIMetaData></CurrentURIMetaData>`
+    },
+    {
+      service: "AVTransport",
+      action: "GetTransportInfo",
+      xml: "<CurrentTransportState>PLAYING</CurrentTransportState>"
+    },
+    {
+      service: "AVTransport",
+      action: "GetMediaInfo",
+      xml: `<CurrentURI>${clipUrl}</CurrentURI><CurrentURIMetaData></CurrentURIMetaData>`
+    },
+    {
+      service: "AVTransport",
+      action: "GetTransportInfo",
+      xml: "<CurrentTransportState>STOPPED</CurrentTransportState>"
+    },
+    { service: "AVTransport", action: "SetAVTransportURI", xml: "" },
+    { service: "AVTransport", action: "Play", xml: "" },
+    { service: "RenderingControl", action: "SetVolume", xml: "" }
+  ];
+
+  const calls = [];
+  const mockFetch = async (_url, opts) => {
+    const soapAction = String(opts.headers.SOAPAction || "");
+    const match = soapAction.match(/service:([^:]+):1#([^\"]+)/);
+    const service = match ? match[1] : null;
+    const action = match ? match[2] : null;
+    const next = expected.shift();
+    assert.ok(next, `unexpected SOAP request ${service}.${action}`);
+    assert.equal(service, next.service);
+    assert.equal(action, next.action);
+    calls.push({ service, action, body: String(opts.body || "") });
+    return { ok: true, text: async () => `<Response>${next.xml}</Response>` };
+  };
+
+  const result = await playClipWithRestore({
+    sonosIp: "192.168.4.33",
+    sonosPort: 1400,
+    clipUrl,
+    audioMimeType: "audio/mpeg",
+    fetchImpl: mockFetch,
+    pollIntervalMs: 0,
+    pollTimeoutMs: 2000
+  });
+
+  assert.equal(expected.length, 0);
+  assert.equal(result.previousUri, "x-sonos-htastream:RINCON_TEST:spdif");
+  assert.equal(result.previousState, "PLAYING");
+  assert.equal(result.previousVolume, 18);
+  assert.ok(
+    calls.some((call) => call.action === "SetVolume" && call.body.includes("<DesiredVolume>18</DesiredVolume>")),
+    "restore should set previous volume"
   );
 });

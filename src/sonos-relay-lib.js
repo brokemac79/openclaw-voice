@@ -10,14 +10,15 @@
  *
  * @param {string} action  - SOAP action name, e.g. "SetAVTransportURI"
  * @param {string} bodyXml - Inner XML fragment for the action body
+ * @param {string} service - Sonos service name, e.g. "AVTransport"
  * @returns {string} Full SOAP envelope string
  */
-export function buildSoapEnvelope(action, bodyXml) {
+export function buildSoapEnvelope(action, bodyXml, service = "AVTransport") {
   return `<?xml version="1.0" encoding="utf-8"?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
             s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
   <s:Body>
-    <u:${action} xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">
+    <u:${action} xmlns:u="urn:schemas-upnp-org:service:${service}:1">
       ${bodyXml}
     </u:${action}>
   </s:Body>
@@ -33,26 +34,40 @@ export function buildSoapEnvelope(action, bodyXml) {
  * @param {string} opts.action     - SOAP action name
  * @param {string} opts.bodyXml    - Inner XML for the action body
  * @param {Function} [opts.fetchImpl] - Optional fetch override for testing
- * @returns {Promise<void>}
+ * @returns {Promise<string>}
  */
 export async function sendSoapAction({ sonosIp, sonosPort = 1400, action, bodyXml, fetchImpl }) {
+  return sendSoapRequest({
+    sonosIp,
+    sonosPort,
+    action,
+    service: "AVTransport",
+    bodyXml,
+    fetchImpl
+  });
+}
+
+async function sendSoapRequest({ sonosIp, sonosPort = 1400, action, service, bodyXml, fetchImpl }) {
   const fetch_ = fetchImpl || globalThis.fetch;
-  const url = `http://${sonosIp}:${sonosPort}/MediaRenderer/AVTransport/Control`;
-  const envelope = buildSoapEnvelope(action, bodyXml);
+  const url = `http://${sonosIp}:${sonosPort}/MediaRenderer/${service}/Control`;
+  const envelope = buildSoapEnvelope(action, bodyXml, service);
+  const serviceType = `urn:schemas-upnp-org:service:${service}:1`;
 
   const response = await fetch_(url, {
     method: "POST",
     headers: {
       "Content-Type": "text/xml; charset=utf-8",
-      SOAPAction: `"urn:schemas-upnp-org:service:AVTransport:1#${action}"`
+      SOAPAction: `"${serviceType}#${action}"`
     },
     body: envelope
   });
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new Error(`Sonos SOAP ${action} failed (${response.status}): ${text}`);
+    throw new Error(`Sonos SOAP ${service}.${action} failed (${response.status}): ${text}`);
   }
+
+  return response.text();
 }
 
 /**
@@ -67,10 +82,20 @@ export async function sendSoapAction({ sonosIp, sonosPort = 1400, action, bodyXm
  */
 export async function setSonosUri({ sonosIp, sonosPort, audioUrl, audioMimeType, fetchImpl }) {
   const metaXml = buildDidlLite(audioUrl, audioMimeType);
-  const escapedUrl = escapeXml(audioUrl);
-  const escapedMeta = escapeXml(metaXml);
+  return setSonosUriRaw({
+    sonosIp,
+    sonosPort,
+    uri: audioUrl,
+    metadata: metaXml,
+    fetchImpl
+  });
+}
 
-  await sendSoapAction({
+export async function setSonosUriRaw({ sonosIp, sonosPort, uri, metadata = "", fetchImpl }) {
+  const escapedUrl = escapeXml(uri);
+  const escapedMeta = escapeXml(metadata);
+
+  return sendSoapAction({
     sonosIp,
     sonosPort,
     action: "SetAVTransportURI",
@@ -97,6 +122,147 @@ export async function playSonos({ sonosIp, sonosPort, fetchImpl }) {
     bodyXml: `<InstanceID>0</InstanceID><Speed>1</Speed>`,
     fetchImpl
   });
+}
+
+export async function getSonosTransportInfo({ sonosIp, sonosPort, fetchImpl }) {
+  const xml = await sendSoapAction({
+    sonosIp,
+    sonosPort,
+    action: "GetTransportInfo",
+    bodyXml: `<InstanceID>0</InstanceID>`,
+    fetchImpl
+  });
+
+  return {
+    state: getXmlTag(xml, "CurrentTransportState") || null,
+    status: getXmlTag(xml, "CurrentTransportStatus") || null,
+    speed: getXmlTag(xml, "CurrentSpeed") || null
+  };
+}
+
+export async function getSonosMediaInfo({ sonosIp, sonosPort, fetchImpl }) {
+  const xml = await sendSoapAction({
+    sonosIp,
+    sonosPort,
+    action: "GetMediaInfo",
+    bodyXml: `<InstanceID>0</InstanceID>`,
+    fetchImpl
+  });
+
+  return {
+    currentUri: getXmlTag(xml, "CurrentURI") || null,
+    currentUriMetaData: getXmlTag(xml, "CurrentURIMetaData") || null
+  };
+}
+
+export async function getSonosVolume({ sonosIp, sonosPort, fetchImpl }) {
+  const xml = await sendSoapRequest({
+    sonosIp,
+    sonosPort,
+    service: "RenderingControl",
+    action: "GetVolume",
+    bodyXml: `<InstanceID>0</InstanceID><Channel>Master</Channel>`,
+    fetchImpl
+  });
+  const value = Number(getXmlTag(xml, "CurrentVolume"));
+  return Number.isFinite(value) ? value : null;
+}
+
+export async function setSonosVolume({ sonosIp, sonosPort, volume, fetchImpl }) {
+  const bounded = Math.max(0, Math.min(100, Number(volume)));
+  return sendSoapRequest({
+    sonosIp,
+    sonosPort,
+    service: "RenderingControl",
+    action: "SetVolume",
+    bodyXml: `<InstanceID>0</InstanceID><Channel>Master</Channel><DesiredVolume>${bounded}</DesiredVolume>`,
+    fetchImpl
+  });
+}
+
+export async function playClipWithRestore({
+  sonosIp,
+  sonosPort,
+  clipUrl,
+  audioMimeType,
+  fetchImpl,
+  pollIntervalMs = 500,
+  pollTimeoutMs = 20000
+}) {
+  const snapshot = {
+    media: await getSonosMediaInfo({ sonosIp, sonosPort, fetchImpl }),
+    transport: await getSonosTransportInfo({ sonosIp, sonosPort, fetchImpl }),
+    volume: await getSonosVolume({ sonosIp, sonosPort, fetchImpl })
+  };
+
+  await setSonosUri({ sonosIp, sonosPort, audioUrl: clipUrl, audioMimeType, fetchImpl });
+  await playSonos({ sonosIp, sonosPort, fetchImpl });
+
+  await waitForClipEnd({ sonosIp, sonosPort, clipUrl, fetchImpl, pollIntervalMs, pollTimeoutMs });
+
+  if (snapshot.media.currentUri) {
+    await setSonosUriRaw({
+      sonosIp,
+      sonosPort,
+      uri: snapshot.media.currentUri,
+      metadata: snapshot.media.currentUriMetaData || "",
+      fetchImpl
+    });
+  }
+  if (snapshot.transport.state === "PLAYING") {
+    await playSonos({ sonosIp, sonosPort, fetchImpl });
+  }
+  if (snapshot.volume !== null) {
+    await setSonosVolume({ sonosIp, sonosPort, volume: snapshot.volume, fetchImpl });
+  }
+
+  return {
+    previousUri: snapshot.media.currentUri,
+    previousState: snapshot.transport.state,
+    previousVolume: snapshot.volume
+  };
+}
+
+async function waitForClipEnd({
+  sonosIp,
+  sonosPort,
+  clipUrl,
+  fetchImpl,
+  pollIntervalMs,
+  pollTimeoutMs
+}) {
+  const start = Date.now();
+  while (Date.now() - start < pollTimeoutMs) {
+    const [media, transport] = await Promise.all([
+      getSonosMediaInfo({ sonosIp, sonosPort, fetchImpl }),
+      getSonosTransportInfo({ sonosIp, sonosPort, fetchImpl })
+    ]);
+
+    if (media.currentUri !== clipUrl || transport.state === "STOPPED") {
+      return;
+    }
+    await sleep(pollIntervalMs);
+  }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function getXmlTag(xml, tag) {
+  const match = String(xml || "").match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, "i"));
+  return match ? unescapeXml(match[1]) : null;
+}
+
+function unescapeXml(value) {
+  return String(value)
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&gt;/g, ">")
+    .replace(/&lt;/g, "<")
+    .replace(/&amp;/g, "&");
 }
 
 /**

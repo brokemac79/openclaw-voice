@@ -37,14 +37,14 @@ const piperNoiseW = process.env.PIPER_NOISE_W || "";
 const piperSentenceSilence = process.env.PIPER_SENTENCE_SILENCE || "";
 const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY || "";
 const elevenLabsVoiceId = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
-const elevenLabsModel = process.env.ELEVENLABS_MODEL || "eleven_monolingual_v1";
+const elevenLabsModel = process.env.ELEVENLABS_MODEL || "eleven_multilingual_v2";
 const ttsFallbackProvider = (process.env.TTS_FALLBACK_PROVIDER || "piper").trim().toLowerCase();
 const sttConfig = readSttConfigFromEnv(process.env);
 const transcribeAudio = createTranscriber(sttConfig);
 const sonosRelayUrl = process.env.SONOS_RELAY_URL || process.env.SONOS_RELAY_PI_URL || "";
 const sonosRelayFallbackUrl = process.env.SONOS_RELAY_FALLBACK_URL || "";
 const sonosRelayAuthBearer = process.env.SONOS_RELAY_AUTH_BEARER || "";
-const sonosRelayTimeoutMs = Number(process.env.SONOS_RELAY_TIMEOUT_MS || 12000);
+const sonosRelayTimeoutMs = Number(process.env.SONOS_RELAY_TIMEOUT_MS || 30000);
 const sonosRoomDefault = process.env.SONOS_ROOM_DEFAULT || "";
 
 const execFileAsync = promisify(execFile);
@@ -158,6 +158,11 @@ async function postToSonosRelay(relayUrl, body) {
       body: JSON.stringify(body),
       signal: controller.signal
     });
+  } catch (error) {
+    if (error && typeof error === "object" && "name" in error && error.name === "AbortError") {
+      throw new Error(`request timed out after ${sonosRelayTimeoutMs}ms`);
+    }
+    throw error;
   } finally {
     clearTimeout(timeout);
   }
@@ -299,26 +304,40 @@ async function synthesizeSpeech(text) {
   const preferred = ttsProvider;
   const fallback = ttsFallbackProvider;
 
+  async function synthesizeWithFallback(primaryProviderLabel, synthesizePrimary) {
+    try {
+      return await synthesizePrimary();
+    } catch (error) {
+      if (fallback !== "edge" && fallback !== "piper") {
+        throw error;
+      }
+
+      if (fallback === preferred) {
+        throw error;
+      }
+
+      process.stderr.write(
+        `${primaryProviderLabel} TTS failed, falling back to ${fallback}: ${error instanceof Error ? error.message : String(error)}\n`
+      );
+
+      if (fallback === "edge") {
+        return synthesizeSpeechWithEdge(cleanText);
+      }
+
+      return synthesizeSpeechWithPiper(cleanText);
+    }
+  }
+
   if (preferred === "piper") {
     return synthesizeSpeechWithPiper(cleanText);
   }
 
   if (preferred === "elevenlabs") {
-    return synthesizeSpeechWithElevenLabs(cleanText);
+    return synthesizeWithFallback("ElevenLabs", () => synthesizeSpeechWithElevenLabs(cleanText));
   }
 
   if (preferred === "edge") {
-    if (fallback === "piper") {
-      try {
-        return await synthesizeSpeechWithEdge(cleanText);
-      } catch (error) {
-        process.stderr.write(
-          `Edge TTS failed, falling back to Piper: ${error instanceof Error ? error.message : String(error)}\n`
-        );
-        return synthesizeSpeechWithPiper(cleanText);
-      }
-    }
-    return synthesizeSpeechWithEdge(cleanText);
+    return synthesizeWithFallback("Edge", () => synthesizeSpeechWithEdge(cleanText));
   }
 
   if (preferred === "auto") {
