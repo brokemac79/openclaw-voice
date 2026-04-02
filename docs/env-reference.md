@@ -195,6 +195,8 @@ Skip this section unless you want Sonos playback.
 | `SONOS_RELAY_PUBLIC_BASE_URL` | Public/reachable base URL that Sonos uses to fetch temp audio clips from the relay | `http://192.168.1.50:8788` | In-repo relay deployment | Use an address reachable from Sonos speakers |
 | `SONOS_RELAY_MEDIA_TTL_MS` | How long temp relay audio files stay available before cleanup | `900000` | In-repo relay deployment | Usually keep 10 to 20 minutes |
 | `SONOS_RELAY_MAX_AUDIO_BYTES` | Max accepted payload size for relay audio uploads | `15728640` | In-repo relay deployment | Tune based on expected clip size |
+| `SONOS_RELAY_RESTORE_POLL_INTERVAL_MS` | Poll interval while waiting for spoken clip playback to finish before restore | `500` | In-repo relay deployment | Lower for quicker restore detection; higher for fewer SOAP calls |
+| `SONOS_RELAY_RESTORE_TIMEOUT_MS` | Maximum wait window before restoring prior source/volume regardless | `20000` | In-repo relay deployment | Set above your longest expected spoken reply |
 
 ## Desktop client
 

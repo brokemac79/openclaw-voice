@@ -17,6 +17,8 @@
  *   SONOS_RELAY_PORT            - listening port (default 8788)
  *   SONOS_PORT                  - Sonos UPnP port (default 1400)
  *   SONOS_RELAY_CLIP_TTL_MS     - ms to keep the temp audio file (default 30000)
+ *   SONOS_RELAY_RESTORE_POLL_INTERVAL_MS - restore poll cadence (default 500)
+ *   SONOS_RELAY_RESTORE_TIMEOUT_MS       - max restore wait window (default 20000)
  */
 
 import fs from "node:fs";
@@ -27,7 +29,7 @@ import crypto from "node:crypto";
 import dotenv from "dotenv";
 import express from "express";
 
-import { setSonosUri, playSonos } from "./sonos-relay-lib.js";
+import { playClipWithRestore } from "./sonos-relay-lib.js";
 
 dotenv.config();
 
@@ -42,6 +44,8 @@ const SONOS_IP = process.env.SONOS_IP;
 const SONOS_PORT = Number(process.env.SONOS_PORT || 1400);
 const VPS_BASE_URL = process.env.SONOS_RELAY_VPS_URL.replace(/\/$/, "");
 const CLIP_TTL_MS = Number(process.env.SONOS_RELAY_CLIP_TTL_MS || 30000);
+const RESTORE_POLL_INTERVAL_MS = Number(process.env.SONOS_RELAY_RESTORE_POLL_INTERVAL_MS || 500);
+const RESTORE_POLL_TIMEOUT_MS = Number(process.env.SONOS_RELAY_RESTORE_TIMEOUT_MS || 20000);
 const BEARER_TOKEN = process.env.SONOS_RELAY_BEARER_TOKEN;
 
 // Temp directory for audio clips
@@ -152,23 +156,21 @@ app.post("/play-audio", requireBearer, async (req, res) => {
       fs.promises.unlink(filePath).catch(() => {});
     }, CLIP_TTL_MS);
 
-    await setSonosUri({
+    const restore = await playClipWithRestore({
       sonosIp: SONOS_IP,
       sonosPort: SONOS_PORT,
-      audioUrl: clipUrl,
-      audioMimeType
-    });
-
-    await playSonos({
-      sonosIp: SONOS_IP,
-      sonosPort: SONOS_PORT
+      clipUrl,
+      audioMimeType,
+      pollIntervalMs: RESTORE_POLL_INTERVAL_MS,
+      pollTimeoutMs: RESTORE_POLL_TIMEOUT_MS
     });
 
     res.json({
       ok: true,
       room: room || null,
       clipUrl,
-      sonosIp: SONOS_IP
+      sonosIp: SONOS_IP,
+      restore
     });
   } catch (error) {
     // Best-effort cleanup on failure
