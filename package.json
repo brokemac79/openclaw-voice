@@ -17,7 +17,7 @@
   "dependencies": {
     "@picovoice/porcupine-node": "^4.0.2",
     "@picovoice/pvrecorder-node": "^1.2.8",
-    "dotenv": "^16.4.5",
+    "dotenv": "^17.4.1",
     "express": "^4.19.2",
     "msedge-tts": "^2.0.4",
     "multer": "^2.1.1",
