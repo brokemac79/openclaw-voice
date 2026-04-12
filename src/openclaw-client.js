@@ -250,6 +250,7 @@ export function createOpenClawClient(config, deps = {}) {
     openClawMethod,
     openClawInputField,
     openClawOutputField,
+    openClawModel,
     openClawAuthBearer,
     openClawCliFallbackEnabled,
     openClawCliBin,
@@ -267,6 +268,7 @@ export function createOpenClawClient(config, deps = {}) {
     const resolvedSessionId = omitDefaultSession ? (sessionId || undefined) : (sessionId || openClawHttpSessionId || undefined);
     const payload = isChatCompletionsEndpoint(openClawUrl)
       ? {
+          model: openClawModel,
           messages: [{ role: "user", content: text }],
           sessionId: resolvedSessionId
         }
@@ -421,6 +423,7 @@ export function readOpenClawClientConfigFromEnv(env) {
     openClawMethod: (env.OPENCLAW_METHOD || "POST").toUpperCase(),
     openClawInputField: env.OPENCLAW_INPUT_FIELD || "input",
     openClawOutputField: env.OPENCLAW_OUTPUT_FIELD || "response",
+    openClawModel: env.OPENCLAW_MODEL || "openclaw",
     openClawAuthBearer: env.OPENCLAW_AUTH_BEARER,
     openClawCliFallbackEnabled: parseBoolean(env.OPENCLAW_CLI_FALLBACK_ENABLED, false),
     openClawCliBin: env.OPENCLAW_CLI_BIN || "openclaw",

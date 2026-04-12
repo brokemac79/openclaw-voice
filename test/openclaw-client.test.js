@@ -146,9 +146,37 @@ test("queryOpenClaw uses OpenAI chat-completions request shape for /v1/chat/comp
   const result = await client("ping", "office");
   assert.equal(result, "chat ok");
   assert.deepEqual(seenBodies[0], {
+    model: "openclaw",
     messages: [{ role: "user", content: "ping" }],
     sessionId: "office"
   });
+});
+
+test("queryOpenClaw allows OPENCLAW_MODEL override for /v1/chat/completions", async () => {
+  const config = readOpenClawClientConfigFromEnv({
+    OPENCLAW_URL: "http://127.0.0.1:18789/v1/chat/completions",
+    OPENCLAW_MODEL: "openclaw/agent-123"
+  });
+
+  const seenBodies = [];
+  const client = createOpenClawClient(config, {
+    fetchImpl: async (_url, options) => {
+      seenBodies.push(JSON.parse(options.body));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: "chat ok" } }]
+        }),
+        text: async () => "",
+        headers: { get: () => "application/json" }
+      };
+    }
+  });
+
+  const result = await client("ping", "office");
+  assert.equal(result, "chat ok");
+  assert.equal(seenBodies[0].model, "openclaw/agent-123");
 });
 
 test("queryOpenClaw parses fallback JSON from stderr when stdout is empty", async () => {
