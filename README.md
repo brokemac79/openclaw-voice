@@ -623,6 +623,7 @@ OpenClaw options:
 - `OPENCLAW_METHOD` (default `POST`)
 - `OPENCLAW_INPUT_FIELD` (default `input`)
 - `OPENCLAW_OUTPUT_FIELD` (default `response`)
+- `OPENCLAW_MODEL` (default `openclaw`; used for `/v1/chat/completions` payloads)
 - `OPENCLAW_VOICE_SYSTEM_PROMPT` (CLI fallback mode; default: built-in voice-optimised prompt)
 
 ### OpenClaw upstream endpoint contract
@@ -665,6 +666,18 @@ Troubleshooting wrong endpoint errors:
 - `404` usually means the URL path is wrong (for example pointing at `/` instead of `/api/chat`).
 - `405` usually means the endpoint does not allow the configured method (default is `POST`).
 - HTML responses (for example `<!doctype html>`) usually mean `OPENCLAW_URL` is pointed at a web page instead of the JSON API endpoint.
+
+When `OPENCLAW_URL` is `/v1/chat/completions`, OpenClaw Voice sends an OpenAI-compatible body including `model`:
+
+```json
+{
+  "model": "openclaw",
+  "messages": [{ "role": "user", "content": "hello" }],
+  "sessionId": "Kitchen"
+}
+```
+
+Set `OPENCLAW_MODEL=openclaw/<agentId>` if your OpenClaw deployment requires routing through a specific agent.
 
 STT provider options:
 
