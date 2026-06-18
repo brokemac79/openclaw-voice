@@ -19,7 +19,7 @@
     "@picovoice/pvrecorder-node": "^1.2.8",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "msedge-tts": "^2.0.4",
+    "msedge-tts": "^2.0.5",
     "multer": "^2.1.1",
     "node-global-key-listener": "^0.3.0"
   }
